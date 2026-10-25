@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
   CostPreset,
+  DemoStatus,
+  Finding,
   Health,
+  MarketOverview,
   Instrument,
   ModelDetail,
   ModelSummary,
@@ -50,6 +53,26 @@ export const useModel = (id: string | undefined) =>
     queryKey: ["model", id],
     queryFn: () => api.get<ModelDetail>(`/models/${encodeURIComponent(id ?? "")}`),
     enabled: !!id,
+  });
+
+export const useMarketsOverview = () =>
+  useQuery({
+    queryKey: ["markets-overview"],
+    queryFn: () => api.get<{ items: MarketOverview[] }>("/markets/overview").then((r) => r.items),
+    staleTime: 5 * 60_000,
+  });
+
+export const useFindings = () =>
+  useQuery({
+    queryKey: ["findings"],
+    queryFn: () => api.get<{ items: Finding[] }>("/findings").then((r) => r.items),
+  });
+
+export const useDemoStatus = (poll = false) =>
+  useQuery({
+    queryKey: ["demo-status"],
+    queryFn: () => api.get<DemoStatus>("/demo/status"),
+    refetchInterval: (q) => (poll || q.state.data?.state === "running" ? 1500 : false),
   });
 
 export const useRuns = (params: { symbol?: string; kind?: string; limit?: number; offset?: number } = {}) =>

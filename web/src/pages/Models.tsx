@@ -11,7 +11,7 @@ export function TrainingGuide() {
   return (
     <Card>
       <CardHeader title="Train models in Google Colab" subtitle="No training happens on your laptop or inside the web app. Colab gives a free GPU; the app only loads the exported files." />
-      <div className="grid gap-4 px-4 pb-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 px-4 pb-4 md:grid-cols-2">
         <ol className="list-decimal space-y-2 pl-5 text-sm text-fg-2">
           <li>
             Open a notebook in Colab:{" "}
@@ -48,7 +48,12 @@ export default function Models() {
   const { data: models, isLoading, error } = useModels();
   return (
     <div className="space-y-4">
-      <PageHeader title="Models" subtitle="Registered XGBoost and LSTM models found in the models/ folder, with their training windows and validation results." />
+      <PageHeader
+        icon={<BrainCircuit className="size-5" />}
+        eyebrow="Data & models"
+        title="Models"
+        subtitle="Registered XGBoost and LSTM models found in the models/ folder, with their training windows and validation results. Click a model for its full report."
+      />
       {isLoading && <Skeleton className="h-40" />}
       {error && <EmptyState title="Could not load models">{(error as Error).message}</EmptyState>}
       {models && models.length === 0 && (
@@ -59,7 +64,7 @@ export default function Models() {
         </Card>
       )}
       {models && models.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-tour="models">
           {models.map((m) => (
             <Link key={m.model_id} to={`/models/${encodeURIComponent(m.model_id)}`}>
               <Card className="h-full p-4 transition-colors hover:border-muted/60">
@@ -89,6 +94,7 @@ export default function Models() {
                 <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
                   <Badge tone="neutral">held-out from {date(m.splits?.test?.[0])}</Badge>
                   <Badge tone="neutral">threshold {num(m.threshold?.long, 2)}</Badge>
+                  {m.training_env && <Badge tone="neutral">{m.training_env.replace(" (CPU runner)", "")}</Badge>}
                   <Badge tone={m.test_evaluations > 5 ? "warn" : "neutral"} title="How many times this model has been evaluated on its test window">
                     test evals: {m.test_evaluations}
                   </Badge>

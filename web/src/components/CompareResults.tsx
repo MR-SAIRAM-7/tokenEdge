@@ -29,17 +29,70 @@ export function CompareResults({ run }: { run: CompareResponse }) {
   }, [run, mode]);
   const challengers = keys.filter((k) => k !== run.baseline && run.sharpe_diff[k]);
   const mlKeys = keys.filter((k) => run.diagnostics?.[k]);
+  const winner = run.ranking[0];
+  const sections = [
+    { id: "overview", label: "Overview" },
+    { id: "risk", label: "Risk" },
+    { id: "metrics", label: "Metrics" },
+    ...(challengers.length ? [{ id: "significance", label: "Significance" }] : []),
+    ...(run.sensitivity ? [{ id: "costs", label: "Costs" }] : []),
+    ...(mlKeys.length ? [{ id: "ml", label: "ML diagnostics" }] : []),
+    { id: "trades", label: "Trades" },
+  ];
 
   return (
     <div className="space-y-4">
       <RunHeader run={{ ...run, kind: "compare" }} />
 
-      <Card className="border-accent/40">
-        <div className="flex gap-3 p-4">
-          <Scale className="mt-0.5 size-5 shrink-0 text-accent" />
-          <div>
-            <div className="text-sm font-semibold text-fg">Verdict</div>
-            <p className="mt-1 text-sm leading-relaxed text-fg-2">{run.verdict}</p>
+      <nav className="sticky top-14 z-30 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-line bg-panel/90 p-1 backdrop-blur" aria-label="Report sections">
+        {sections.map((s) => (
+          <a key={s.id} href={`#${s.id}`} className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-fg-2 hover:bg-panel-2 hover:text-fg">
+            {s.label}
+          </a>
+        ))}
+      </nav>
+
+      <Card id="overview" className="scroll-mt-28 overflow-hidden border-accent/40">
+        <div className="hero-bg p-5">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+              <Scale className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold tracking-wider text-accent uppercase">Verdict</div>
+              <div className="mt-0.5 text-lg font-semibold text-fg">
+                Highest Sharpe: {labels[winner]} <span className="tabular text-fg-2">({num(run.metrics[winner]?.sharpe, 2)})</span>
+              </div>
+              <p className="mt-1.5 text-sm leading-relaxed text-fg-2">{run.verdict}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {keys.map((k) => {
+              const m = run.metrics[k];
+              return (
+                <div key={k} className="rounded-lg border border-line bg-panel/80 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-fg-2">
+                    <span className="h-[3px] w-3 rounded-full" style={{ background: color(k) }} />
+                    {labels[k]}
+                    {k === winner && <Badge tone="ok" className="ml-auto">best</Badge>}
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                    <div>
+                      <div className="tabular text-sm font-semibold text-fg">{num(m?.sharpe, 2)}</div>
+                      <div className="text-[10px] text-muted">Sharpe</div>
+                    </div>
+                    <div>
+                      <div className={`tabular text-sm font-semibold ${(m?.total_return ?? 0) >= 0 ? "text-pos" : "text-neg"}`}>{pct(m?.total_return, 0, true)}</div>
+                      <div className="text-[10px] text-muted">Return</div>
+                    </div>
+                    <div>
+                      <div className="tabular text-sm font-semibold text-fg">{pct(m?.max_drawdown, 0)}</div>
+                      <div className="text-[10px] text-muted">Max DD</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </Card>
@@ -59,7 +112,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
         </div>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div id="risk" className="grid scroll-mt-28 grid-cols-1 gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader title="Drawdowns" />
           <div className="px-4 pb-4">
@@ -106,7 +159,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
         </Card>
       </div>
 
-      <Card>
+      <Card id="metrics" className="scroll-mt-28">
         <CardHeader title="Metrics" subtitle="● marks the best value in each row." />
         <div className="px-4 pb-4">
           <MetricsTable columns={keys.map((k) => ({ key: k, label: labels[k], color: color(k), metrics: run.metrics[k] }))} rows={COMPARE_KEYS} />
@@ -114,7 +167,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
       </Card>
 
       {challengers.length > 0 && (
-        <Card>
+        <Card id="significance" className="scroll-mt-28">
           <CardHeader
             title={`Bootstrap test vs ${labels[run.baseline]}`}
             subtitle="Paired stationary block bootstrap of the Sharpe difference. The shaded band is the 95% confidence interval; if it includes 0 the difference is not significant."
@@ -151,12 +204,12 @@ export function CompareResults({ run }: { run: CompareResponse }) {
       )}
 
       {run.sensitivity && (
-        <Card>
+        <Card id="costs" className="scroll-mt-28">
           <CardHeader
             title="Cost sensitivity"
             subtitle="Each strategy re-run with a flat commission of N bps per side and no slippage. Break-even = cost at which total return reaches zero."
           />
-          <div className="grid gap-4 px-4 pb-4 lg:grid-cols-[1fr_280px]">
+          <div className="grid grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(0,1fr)_280px]">
             <XYChart
               series={keys.map((k) => ({
                 key: k,
@@ -203,7 +256,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
       )}
 
       {mlKeys.length > 0 && (
-        <Card>
+        <Card id="ml" className="scroll-mt-28">
           <CardHeader title="Accuracy vs profitability" subtitle="Classification quality of each ML model on this window, next to its trading result." />
           <div className="space-y-6 px-4 pb-4">
             {mlKeys.map((k) => (
@@ -218,7 +271,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
         </Card>
       )}
 
-      <div className="grid gap-4">
+      <div id="trades" className="grid scroll-mt-28 grid-cols-1 gap-4">
         <Card>
           <CardHeader
             title="Monthly returns"

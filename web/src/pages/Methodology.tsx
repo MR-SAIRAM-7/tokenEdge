@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { usePresets } from "../api/queries";
+import { BookOpen } from "lucide-react";
 import { Card, CardHeader, PageHeader } from "../components/ui";
 
 function Section({ n, title, children }: { n: number; title: string; children: ReactNode }) {
@@ -115,10 +116,13 @@ export default function Methodology() {
   return (
     <div className="space-y-4">
       <PageHeader
+        icon={<BookOpen className="size-5" />}
+        eyebrow="Learn"
         title="Methodology"
         subtitle="How TokenEdge keeps the comparison honest. The design follows López de Prado, Advances in Financial Machine Learning (2018), chapters 3, 7, 11, 12 and 14."
       />
 
+      <div data-tour="methodology" className="space-y-4">
       <Section n={1} title="Next-bar execution">
         <p>
           A strategy's decision for bar <i>t</i> may use every price up to and including the close of bar <i>t</i>. The engine fills that decision at the <b>open of bar t+1</b>,
@@ -128,6 +132,7 @@ export default function Methodology() {
         <TimingDiagram />
         <p>Positions change only when the target changes, so equity drift never causes small rebalancing trades. Any open position is closed at the last bar's close, with costs.</p>
       </Section>
+      </div>
 
       <Section n={2} title="Chronological splits, purging and embargo">
         <p>

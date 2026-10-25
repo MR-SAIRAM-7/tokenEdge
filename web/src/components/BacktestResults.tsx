@@ -65,7 +65,7 @@ export function RunHeader({ run }: { run: BacktestResponse | { symbol: string; i
 export function DiagnosticsCard({ report, title = "Classification on this window" }: { report: ClassificationReport; title?: string }) {
   const at = report.at_trading_threshold;
   return (
-    <div className="grid gap-6 md:grid-cols-[auto_1fr]">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr]">
       <ConfusionMatrix report={report} />
       <div className="space-y-2 text-sm">
         <div className="font-medium text-fg">{title}</div>

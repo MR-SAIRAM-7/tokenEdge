@@ -12,6 +12,8 @@ const ModelDetailPage = lazy(() => import("./pages/ModelDetail"));
 const Runs = lazy(() => import("./pages/Runs"));
 const RunView = lazy(() => import("./pages/RunView"));
 const Methodology = lazy(() => import("./pages/Methodology"));
+const Findings = lazy(() => import("./pages/Findings"));
+const Project = lazy(() => import("./pages/Project"));
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunView />} />
           <Route path="/methodology" element={<Methodology />} />
+          <Route path="/findings" element={<Findings />} />
+          <Route path="/project" element={<Project />} />
           <Route path="*" element={<EmptyState title="Page not found">That page does not exist.</EmptyState>} />
         </Routes>
       </Suspense>

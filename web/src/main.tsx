@@ -6,6 +6,8 @@ import App from "./App";
 import { ThemeProvider } from "./state/theme";
 import { MarketProvider } from "./state/market";
 import { ToastProvider } from "./components/Toast";
+import { UiProvider } from "./state/ui";
+import "@fontsource-variable/inter";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -21,7 +23,9 @@ createRoot(document.getElementById("root")!).render(
         <MarketProvider>
           <ToastProvider>
             <BrowserRouter>
-              <App />
+              <UiProvider>
+                <App />
+              </UiProvider>
             </BrowserRouter>
           </ToastProvider>
         </MarketProvider>

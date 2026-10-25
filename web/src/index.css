@@ -4,64 +4,83 @@
 
 :root {
   color-scheme: light;
-  --bg: #f4f5f7;
+  --bg: #f4f6f9;
   --panel: #ffffff;
-  --panel-2: #f1f3f6;
-  --line: #e2e5ea;
-  --grid: #eceef1;
+  --panel-2: #f1f4f8;
+  --panel-3: #e8edf3;
+  --line: #e1e6ed;
+  --grid: #eceff3;
   --axis: #c3c2b7;
-  --fg: #0f1115;
-  --fg-2: #4b5160;
-  --muted: #747b8a;
+  --fg: #0e1116;
+  --fg-2: #46505f;
+  --muted: #717a89;
   --accent: #2a78d6;
+  --accent-strong: #1c5cab;
   --accent-soft: rgba(42, 120, 214, 0.1);
+  --violet: #6250d6;
   --pos: #0b7a3b;
   --neg: #c43a3a;
-  --warn: #a86b00;
-  --warn-soft: rgba(250, 178, 25, 0.14);
+  --warn: #9a6200;
+  --warn-soft: rgba(250, 178, 25, 0.16);
   --ok-soft: rgba(12, 163, 12, 0.1);
   --neg-soft: rgba(208, 59, 59, 0.1);
+  --shadow: 0 1px 2px rgba(14, 17, 22, 0.04), 0 4px 16px rgba(14, 17, 22, 0.04);
+  --shadow-lg: 0 12px 40px rgba(14, 17, 22, 0.14);
+  --hero: radial-gradient(1200px 400px at 0% 0%, rgba(42, 120, 214, 0.1), transparent 60%),
+    radial-gradient(900px 400px at 100% 100%, rgba(98, 80, 214, 0.08), transparent 60%);
 }
 
 .dark {
   color-scheme: dark;
-  --bg: #0b0d10;
-  --panel: #14161a;
-  --panel-2: #1b1e23;
-  --line: #262a31;
-  --grid: #20242a;
-  --axis: #383835;
-  --fg: #eef0f3;
-  --fg-2: #b8bdc7;
-  --muted: #868d9a;
+  --bg: #090c11;
+  --panel: #10141b;
+  --panel-2: #161b24;
+  --panel-3: #1d2430;
+  --line: #222a36;
+  --grid: #1c222c;
+  --axis: #383d45;
+  --fg: #eef1f5;
+  --fg-2: #b5bcc8;
+  --muted: #838c9b;
   --accent: #3987e5;
+  --accent-strong: #5598e7;
   --accent-soft: rgba(57, 135, 229, 0.14);
+  --violet: #9085e9;
   --pos: #2fbf5b;
   --neg: #e66767;
   --warn: #fab219;
   --warn-soft: rgba(250, 178, 25, 0.12);
   --ok-soft: rgba(12, 163, 12, 0.14);
   --neg-soft: rgba(230, 103, 103, 0.14);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --hero: radial-gradient(1200px 420px at 0% 0%, rgba(57, 135, 229, 0.16), transparent 60%),
+    radial-gradient(900px 420px at 100% 100%, rgba(144, 133, 233, 0.12), transparent 60%);
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);
+  --color-panel-3: var(--panel-3);
   --color-line: var(--line);
   --color-fg: var(--fg);
   --color-fg-2: var(--fg-2);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
+  --color-violet: var(--violet);
   --color-pos: var(--pos);
   --color-neg: var(--neg);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-ok-soft: var(--ok-soft);
   --color-neg-soft: var(--neg-soft);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
 }
 
 html,
@@ -74,11 +93,54 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+}
+
+/* Presentation mode: everything sized in rem scales up for projectors. */
+html.present {
+  font-size: 17.5px;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.hero-bg {
+  background-image: var(--hero);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-in {
+  animation: fade-up 0.28s ease-out both;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.progress-indeterminate {
+  animation: progress-slide 1.3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .progress-indeterminate {
+    animation: none;
+  }
 }
 
 /* Recharts: keep chart chrome recessive */

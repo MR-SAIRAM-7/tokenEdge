@@ -48,6 +48,7 @@ class ModelInfo:
             "threshold": md.get("threshold"),
             "created_at": md.get("created_at"),
             "trials": (md.get("cv") or {}).get("trials"),
+            "training_env": md.get("training_env"),
             "val_metrics": {
                 k: val.get(k) for k in ("accuracy", "roc_auc", "f1", "sharpe_after_costs")
             },

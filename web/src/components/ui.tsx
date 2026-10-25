@@ -4,7 +4,7 @@ import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, t
 
 export function Card({ className, children, ...rest }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={clsx("rounded-xl border border-line bg-panel", className)} {...rest}>
+    <div className={clsx("rounded-xl border border-line bg-panel shadow-card", className)} {...rest}>
       {children}
     </div>
   );
@@ -17,7 +17,7 @@ export function CardHeader({ title, subtitle, actions, className }: { title: Rea
         <h3 className="text-sm font-semibold text-fg">{title}</h3>
         {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
@@ -262,14 +262,43 @@ export function EmptyState({ icon, title, children, action }: { icon?: ReactNode
   );
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  icon,
+  eyebrow,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  icon?: ReactNode;
+  eyebrow?: ReactNode;
+}) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-fg">{title}</h1>
-        {subtitle && <p className="mt-1 max-w-3xl text-sm text-muted">{subtitle}</p>}
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-3.5">
+        {icon && <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">{icon}</div>}
+        <div className="min-w-0">
+          {eyebrow && <div className="mb-0.5 text-[11px] font-semibold tracking-wider text-accent uppercase">{eyebrow}</div>}
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+          {subtitle && <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted">{subtitle}</p>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function StatTile({ label, value, sub, icon, tone }: { label: ReactNode; value: ReactNode; sub?: ReactNode; icon?: ReactNode; tone?: "pos" | "neg" }) {
+  return (
+    <div className="rounded-xl border border-line bg-panel p-4 shadow-card">
+      <div className="flex items-center justify-between text-xs font-medium text-muted">
+        {label}
+        {icon && <span className="text-muted">{icon}</span>}
+      </div>
+      <div className={clsx("mt-2 text-2xl font-semibold tracking-tight", tone === "pos" ? "text-pos" : tone === "neg" ? "text-neg" : "text-fg")}>{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}
     </div>
   );
 }

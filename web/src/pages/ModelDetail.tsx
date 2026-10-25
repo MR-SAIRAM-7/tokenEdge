@@ -67,7 +67,7 @@ export default function ModelDetailPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader title="Configuration" />
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 px-4 pb-4 text-sm">
@@ -122,7 +122,7 @@ export default function ModelDetailPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {m.threshold_search && m.threshold_search.length > 0 && (
           <Card>
             <CardHeader title="Threshold search (validation)" subtitle="Each candidate threshold backtested on the validation window after costs." />

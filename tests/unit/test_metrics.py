@@ -111,3 +111,20 @@ def test_flat_equity_has_zero_sharpe_not_noise(daily):
     assert m["sharpe"] == 0.0
     assert m["psr"] is None
     assert sharpe_ratio(pd.Series(np.full(500, 0.0)), 252, 0.037) == 0.0
+
+
+def test_bootstrap_estimate_matches_reported_sharpe_difference(daily):
+    cfg = ExecutionConfig()
+    a = run_backtest(daily, pd.Series(1.0, index=daily.index), "2016-01-01", None, cfg)
+    sig = get_strategy("sma_crossover", {"fast": 10, "slow": 50}).generate_signals(daily)
+    b = run_backtest(daily, sig, "2016-01-01", None, cfg)
+    rep = compare_strategies(
+        {"buy_hold": a, "sma_crossover": b},
+        baseline="sma_crossover",
+        rf_annual=0.04,
+        bootstrap_samples=200,
+    )
+    m = rep["metrics"]
+    assert rep["sharpe_diff"]["buy_hold"]["estimate"] == pytest.approx(
+        m["buy_hold"]["sharpe"] - m["sma_crossover"]["sharpe"], abs=1e-9
+    )

@@ -8,6 +8,7 @@ services:
     environment:
       # Set to "1" to never call Yahoo / exchanges (bundled snapshots only), e.g. for a viva demo.
       TOKENEDGE_OFFLINE: "0"
+      TOKENEDGE_DEMO_SEED: "1"
     volumes:
       # Drop newly trained model folders into ./models without rebuilding the image.
       - ./models:/app/models:ro

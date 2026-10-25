@@ -1,11 +1,13 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Download, Info, RefreshCw, XCircle } from "lucide-react";
+import clsx from "clsx";
+import { AlertTriangle, CandlestickChart, CheckCircle2, Download, Info, RefreshCw, XCircle } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
+import { useMarketsOverview } from "../api/queries";
 import type { OhlcvResponse, QualityReport } from "../api/types";
 import { PriceChart, type Overlay, type PriceChartHandle } from "../components/charts/PriceChart";
 import { useToast } from "../components/Toast";
-import { Alert, Button, Card, CardHeader, Checkbox, PageHeader, Segmented, Skeleton } from "../components/ui";
+import { Alert, Button, Card, CardHeader, PageHeader, Segmented, Skeleton, StatTile } from "../components/ui";
 import { strategyColor } from "../lib/colors";
 import { downloadCanvas, downloadCsv } from "../lib/download";
 import { date, int, isIntraday, pct, price } from "../lib/format";
@@ -45,6 +47,8 @@ export default function DataExplorer() {
   const [showVolume, setShowVolume] = useState(true);
   const limit = rangeLimit(range, market.interval);
   const base = { symbol: market.symbol, source: market.source, interval: market.interval };
+  const { data: overview } = useMarketsOverview();
+  const ov = overview?.find((o) => o.symbol === market.symbol && o.source === market.source && o.interval === market.interval);
 
   const ohlcv = useQuery({
     queryKey: ["ohlcv", base, limit],
@@ -103,8 +107,15 @@ export default function DataExplorer() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Data Explorer"
-        subtitle="Inspect prices, indicators and data quality before modelling. Data comes from the local cache or the bundled snapshot; Refresh pulls new bars from the source."
+        icon={<CandlestickChart className="size-5" />}
+        eyebrow="Data"
+        title={
+          <span className="flex flex-wrap items-baseline gap-x-3">
+            {market.symbol}
+            <span className="text-base font-normal text-muted">{ov?.name ?? market.interval}</span>
+          </span>
+        }
+        subtitle="Prices, indicators and data quality. Data comes from the local cache or the bundled snapshot; Refresh pulls new bars from the source."
         actions={
           <>
             <Button icon={<RefreshCw className="size-4" />} loading={refresh.isPending} onClick={() => refresh.mutate()}>
@@ -127,7 +138,18 @@ export default function DataExplorer() {
         }
       />
 
-      <Card>
+      {ov && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatTile label="Last close" value={<span className="tabular">{price(ov.last_close)}</span>} sub={date(ov.last_time, intraday)} />
+          <StatTile label="1 day" value={pct(ov.change_1d, 2, true)} tone={(ov.change_1d ?? 0) >= 0 ? "pos" : "neg"} />
+          <StatTile label="30 days" value={pct(ov.change_30d, 1, true)} tone={(ov.change_30d ?? 0) >= 0 ? "pos" : "neg"} />
+          <StatTile label="1 year" value={pct(ov.change_1y, 1, true)} tone={(ov.change_1y ?? 0) >= 0 ? "pos" : "neg"} />
+          <StatTile label="Volatility (1Y)" value={pct(ov.volatility_1y, 1)} sub="annualized" />
+          <StatTile label="History" value={int(ov.bars)} sub={`${market.interval} bars`} />
+        </div>
+      )}
+
+      <Card data-tour="price-chart">
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
           <Segmented<Range>
             value={range}
@@ -141,16 +163,33 @@ export default function DataExplorer() {
               { value: "all", label: "All" },
             ]}
           />
-          <div className="flex flex-wrap items-center gap-3">
-            {INDICATORS.map((ind) => (
-              <Checkbox
-                key={ind.key}
-                checked={active.includes(ind.key)}
-                onChange={(on) => setActive((a) => (on ? [...a, ind.key] : a.filter((x) => x !== ind.key)))}
-                label={ind.label}
-              />
-            ))}
-            <Checkbox checked={showVolume} onChange={setShowVolume} label="Volume" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {INDICATORS.map((ind) => {
+              const on = active.includes(ind.key);
+              return (
+                <button
+                  key={ind.key}
+                  onClick={() => setActive((a) => (on ? a.filter((x) => x !== ind.key) : [...a, ind.key]))}
+                  aria-pressed={on}
+                  className={clsx(
+                    "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                    on ? "border-accent/50 bg-accent-soft text-accent" : "border-line text-fg-2 hover:text-fg",
+                  )}
+                >
+                  {ind.label}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setShowVolume(!showVolume)}
+              aria-pressed={showVolume}
+              className={clsx(
+                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                showVolume ? "border-accent/50 bg-accent-soft text-accent" : "border-line text-fg-2 hover:text-fg",
+              )}
+            >
+              Volume
+            </button>
           </div>
           <button
             className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-fg"
@@ -184,7 +223,7 @@ export default function DataExplorer() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <Card>
           <CardHeader title="Summary" subtitle={d ? `${int(d.bars)} bars shown` : undefined} />
           {stats && d ? (

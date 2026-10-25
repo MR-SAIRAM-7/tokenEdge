@@ -292,6 +292,7 @@ export interface ModelSummary {
   threshold: { long: number; short: number };
   created_at: string;
   trials: number | null;
+  training_env?: string | null;
   val_metrics: { accuracy: number | null; roc_auc: number | null; f1: number | null; sharpe_after_costs: number | null };
   test_evaluations: number;
 }
@@ -375,6 +376,50 @@ export interface TuneResult {
   trial_sharpe_std: number | null;
   train: [string, string];
   val: [string, string];
+}
+
+export interface MarketOverview {
+  symbol: string;
+  source: Source;
+  interval: string;
+  name: string;
+  asset_class: "equity" | "crypto";
+  last_close: number | null;
+  last_time: string;
+  change_1d: number | null;
+  change_30d: number | null;
+  change_1y: number | null;
+  volatility_1y: number | null;
+  bars: number;
+  sparkline: (number | null)[];
+}
+
+export interface Finding {
+  run_id: string;
+  name: string | null;
+  created_at: string;
+  symbol: string;
+  source: Source;
+  interval: string;
+  window: { name: string; start: string; end: string };
+  in_sample: boolean;
+  execution: { preset: string | null };
+  strategies: { key: string; name: string; label: string; kind: string }[];
+  metrics: Record<string, { total_return: number | null; cagr: number | null; sharpe: number | null; sortino: number | null; max_drawdown: number | null; calmar: number | null; psr: number | null; trades: number }>;
+  dsr: Record<string, { dsr: number | null; sr0_annual: number | null; n_trials: number }>;
+  sharpe_diff: Record<string, { estimate: number; ci_low: number; ci_high: number; p_value: number; significant: boolean } | null>;
+  baseline: string;
+  ranking: string[];
+  verdict: string;
+}
+
+export interface DemoStatus {
+  state: "idle" | "running" | "done" | "error";
+  done: number;
+  total: number;
+  current: string;
+  errors: string[];
+  has_runs?: boolean;
 }
 
 export interface Splits {

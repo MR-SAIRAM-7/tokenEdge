@@ -152,8 +152,12 @@ def bootstrap_sharpe_difference(
     block_size: float | None = None,
     seed: int = 42,
     bins: int = 40,
+    rf_annual: float = 0.0,
 ) -> dict | None:
-    """Paired stationary bootstrap of SR(a) - SR(b) (annualized).
+    """Paired stationary bootstrap of SR(a) - SR(b) (annualized, on excess returns).
+
+    ``rf_annual`` must match the rate used for the reported Sharpe ratios so the point
+    estimate equals the difference of the displayed values.
 
     Returns the point estimate, a 95% percentile CI, a one-sided p-value for
     H0: SR(a) <= SR(b), and a histogram of the bootstrap distribution for plotting.
@@ -161,7 +165,8 @@ def bootstrap_sharpe_difference(
     a = np.asarray(returns_a, dtype="float64")
     b = np.asarray(returns_b, dtype="float64")
     ok = np.isfinite(a) & np.isfinite(b)
-    a, b = a[ok], b[ok]
+    rf = rf_annual / periods_per_year
+    a, b = a[ok] - rf, b[ok] - rf
     n = len(a)
     if n < 20:
         return None

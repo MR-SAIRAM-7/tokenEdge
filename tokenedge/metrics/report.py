@@ -56,6 +56,7 @@ def compare_strategies(
             n_samples=bootstrap_samples,
             block_size=block_size,
             seed=seed,
+            rf_annual=rf_annual,
         )
 
     ranking = sorted(

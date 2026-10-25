@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -19,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from tokenedge import __version__
 from tokenedge.api import db
-from tokenedge.api.routes import backtest, data, meta, models, runs
+from tokenedge.api.routes import backtest, data, insights, meta, models, runs
 from tokenedge.config import get_settings
 from tokenedge.errors import TokenEdgeError
 
@@ -38,6 +39,12 @@ def _error(status: int, code: str, message: str, details: dict | None = None) ->
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.session().close()  # creates tables on first start
+    if os.getenv("TOKENEDGE_DEMO_SEED", "0").lower() in {"1", "true", "yes"}:
+        from tokenedge import demo
+
+        if not demo.has_runs():
+            log.info("TOKENEDGE_DEMO_SEED is set and the run history is empty: seeding demo runs")
+            demo.seed_in_background()
     yield
 
 
@@ -100,7 +107,14 @@ def create_app() -> FastAPI:
         log.exception("Unhandled error")
         return _error(500, "INTERNAL_ERROR", f"{type(exc).__name__}: {exc}")
 
-    for router in (meta.router, data.router, models.router, backtest.router, runs.router):
+    for router in (
+        meta.router,
+        data.router,
+        models.router,
+        backtest.router,
+        runs.router,
+        insights.router,
+    ):
         app.include_router(router, prefix="/api")
 
     if settings.static_dir and Path(settings.static_dir).exists():
