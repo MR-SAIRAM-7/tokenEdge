@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 
@@ -20,5 +19,5 @@ def fixed_horizon_labels(
     label = (fwd > threshold).astype("float64").where(fwd.notna())
     t1 = pd.Series(close.index, index=close.index).shift(-horizon)
     out = pd.DataFrame({"label": label, "ret": fwd.astype("float64"), "t1": t1}, index=close.index)
-    out["barrier"] = np.where(fwd.notna(), "vertical", None)
+    out["barrier"] = pd.Series("vertical", index=close.index, dtype=object).where(fwd.notna(), None)
     return out

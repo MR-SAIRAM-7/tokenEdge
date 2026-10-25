@@ -60,6 +60,8 @@ def triple_barrier_labels(
     end_pos = rows + 1 + touch
     t1 = pd.Series(index[end_pos], index=index[:m])[valid].reindex(index)
     kinds = np.where(vertical, "vertical", np.where(first_up < first_dn, "upper", "lower"))
-    barrier[:m] = np.where(valid, kinds, None)
+    kinds_obj = kinds.astype(object)
+    kinds_obj[~valid] = None
+    barrier[:m] = kinds_obj
 
     return pd.DataFrame({"label": label, "ret": ret, "t1": t1, "barrier": barrier}, index=index)
