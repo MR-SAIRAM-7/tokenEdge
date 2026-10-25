@@ -1,0 +1,59 @@
+name: Train demo models
+
+# Trains XGBoost + LSTM models on the bundled snapshots in the cloud (not on a laptop).
+# Download the "demo-models" artifact and unzip its folders into models/.
+on:
+  workflow_dispatch:
+
+jobs:
+  train:
+    name: ${{ matrix.symbol }} ${{ matrix.interval }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { symbol: "SPY", source: "yfinance", interval: "1d", slug: "spy" }
+          - { symbol: "AAPL", source: "yfinance", interval: "1d", slug: "aapl" }
+          - { symbol: "RELIANCE.NS", source: "yfinance", interval: "1d", slug: "reliance" }
+          - { symbol: "TCS.NS", source: "yfinance", interval: "1d", slug: "tcs" }
+          - { symbol: "BTC/USDT", source: "ccxt", interval: "1h", slug: "btc" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install (CPU PyTorch for training only)
+        run: |
+          pip install -r requirements.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install onnx onnxscript
+          pip install -e . --no-deps
+      - name: Train
+        env:
+          TOKENEDGE_OFFLINE: "1"
+        run: python scripts/train_demo_models.py "${{ matrix.symbol }}" --source ${{ matrix.source }} --interval ${{ matrix.interval }} --out out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ matrix.slug }}
+          path: out/
+          retention-days: 14
+
+  bundle:
+    needs: train
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: model-*
+          merge-multiple: true
+          path: models
+      - run: ls -la models && du -sh models
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-models
+          path: models/
+          retention-days: 30
