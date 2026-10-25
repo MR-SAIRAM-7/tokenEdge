@@ -53,12 +53,26 @@ The market selector in the top bar (symbol and interval) applies to every page. 
 | Page | What to do there |
 |---|---|
 | **Dashboard** | Overview, latest comparison, recent runs. "Compare strategies" runs the default comparison for the selected market. |
-| **Data Explorer** | Candlestick chart with SMA/EMA/Bollinger overlays, RSI and MACD panes, a data-quality report and the data hash. **Refresh data** downloads bars newer than the cache. |
+| **Findings** | The latest comparison for every market as one scoreboard. **Run study** (or **Re-run study**) runs the research study: a comparison per market plus a set of backtests, all saved to Run History. |
+| **Data Explorer** | Candlestick chart with SMA/EMA/Bollinger overlays, RSI, MACD and fractionally differentiated price (d = 0.4) panes, a data-quality report and the data hash. **Refresh data** downloads bars newer than the cache. |
 | **Backtest Lab** | Run one strategy. Choose the window (Train / Validation / Test / Model test / Full / Custom), cost preset or custom commission and slippage, then **Run backtest**. For SMA, **Auto-tune** grid-searches the windows on train/validation data only and shows the validation-Sharpe heatmap. |
-| **Compare** | Buy & Hold vs SMA vs XGBoost vs LSTM on the same window and costs. Shows the verdict, equity and drawdown curves, metrics table, PSR/DSR, bootstrap test of the Sharpe difference and cost sensitivity. |
+| **Compare** | Buy & Hold vs SMA vs XGBoost vs LSTM (and optionally SMA + ML filter) on the same window and costs. Shows the verdict, equity and drawdown curves, metrics table, PSR/DSR, bootstrap test of the Sharpe difference and cost sensitivity. |
 | **Models** | Every model in `models/`, with its split timeline, validation metrics, threshold search, training curve, ROC curve and feature importance. Also shows Colab training instructions. |
-| **Run History** | Every run is saved with its configuration and data hash. Open, rename, export (CSV zip or JSON) or delete. |
+| **Run History** | Every run is saved with its configuration and data hash. Open, rename, export (CSV zip or JSON) or delete. **Export all** downloads every run as one JSON bundle; **Import** loads a bundle (or a single run's JSON) from another machine. |
 | **Methodology** | How look-ahead bias is prevented, the cost models, the statistics and the known limitations. |
+
+### Strategies
+
+| Strategy | What it does |
+|---|---|
+| Buy & Hold | Benchmark: long from the first bar to the last. |
+| SMA Crossover | Long when the fast average is above the slow one (SMA or EMA); short instead of flat in long/short mode. |
+| XGBoost / LSTM | Long when the model's P(up) is above the threshold chosen on validation data. **Position sizing → Probability** scales the position with the model's confidence (AFML Ch. 10 bet sizing, in steps of 10%). |
+| SMA + ML filter | The SMA crossover picks the side and a trained model (XGBoost or LSTM) must agree before a position is taken. A simplified form of meta-labeling. |
+
+### Sharing a configuration
+
+Backtest Lab and Compare keep their whole setup in the page address (`?config=…`). **Share** copies that link; opening it loads the same market, strategy, parameters, window and costs, ready to run.
 
 ### Reading the results
 
@@ -87,19 +101,21 @@ git commit -m "Add trained models"
 git push
 ```
 
-Suggested set for the report: XGBoost and LSTM for `SPY` (1d), `RELIANCE.NS` (1d) and `BTC/USDT` (1h).
+The committed models (XGBoost and LSTM for SPY, AAPL, RELIANCE.NS, TCS.NS, BTC/USDT and ETH/USDT) were trained by the **Train models** GitHub Actions workflow (Actions → Train models → Run workflow), which runs the same pipeline on a cloud CPU runner. Leave "only" empty to train every market, or give slugs such as `eth btc`. Download the `trained-models` artifact and unzip its folders into `models/`.
 
-The same pipeline is available from the command line for anyone with a GPU: `python scripts/train.py xgboost SPY` (needs `pip install -e ".[train]"`).
+The same pipeline is available from the command line for anyone with a GPU: `python scripts/train.py xgboost SPY` (needs `pip install -e ".[train]"`). Pass `feature_set="v2"` to the training functions to add the fractionally differentiated price feature.
 
 ## 4. Experiments for the report
 
-`notebooks/03_experiments.ipynb` runs experiments E1–E6 from the PRD and saves CSV tables to `docs/results/`. E1, E2, E5 and E6 only need trained models and can also run locally:
+The results in [`docs/results/`](results/README.md) come from the **Experiments** GitHub Actions workflow (Actions → Experiments → Run workflow). It runs E1–E7 on the bundled snapshots and the committed models and uploads an `experiment-results` artifact with CSV tables, PNG figures and a summary (`README.md`); copy its contents into `docs/results/`.
+
+E1, E2, E5, E6 and E7 only need trained models and can also run locally:
 
 ```bash
 python scripts/run_experiments.py
 ```
 
-E3 (labeling ablation) and E4 (look-ahead bias) train small models, so run them in Colab.
+E3 (labeling ablation) and E4 (look-ahead bias) train small models, so they run only with `--with-training` (in the workflow or in Colab with `notebooks/03_experiments.ipynb`).
 
 ## 5. Tests
 

@@ -385,7 +385,7 @@ def main() -> None:
         "## E2: cost sensitivity",
         "",
         "Sharpe ratio at 0, 5, 10, 20 and 50 bps per side (commission and slippage combined). "
-        "`break_even_bps` is the cost level at which the strategy's Sharpe falls to zero.",
+        "`break_even_bps` is the cost per side at which the strategy's total return falls to zero: — means it stays positive up to 50 bps, 0 means it is negative even without costs.",
         "",
     ]
     sections += [f"![{f}]({f})\n" for f in made if f.startswith("e2_")]

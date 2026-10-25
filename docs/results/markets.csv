@@ -1,0 +1,7 @@
+market,held-out window,bars,cost preset,tuned SMA,models,data hash
+SPY 1d,2023-01-01 to 2026-10-23,956,us_equity,30/200,"lstm_spy_1d_fh_v1, xgb_spy_1d_tb_v1",sha256:fdecd494b1ce
+AAPL 1d,2023-01-01 to 2026-10-23,956,us_equity,50/100,"lstm_aapl_1d_fh_v1, xgb_aapl_1d_tb_v1",sha256:e1206a2c4dac
+RELIANCE.NS 1d,2023-01-01 to 2026-10-23,940,india_equity_nse,50/200,"lstm_reliance.ns_1d_fh_v1, xgb_reliance.ns_1d_tb_v1",sha256:cffe7dfd7ab9
+TCS.NS 1d,2023-01-01 to 2026-10-23,940,india_equity_nse,30/150,"lstm_tcs.ns_1d_fh_v1, xgb_tcs.ns_1d_tb_v1",sha256:e7a176db2234
+BTC/USDT 1h,2024-07-01 to 2026-10-25,20309,crypto_spot,50/100,"lstm_btc-usdt_1h_fh_v1, xgb_btc-usdt_1h_tb_v1",sha256:1fcb152c2ea9
+ETH/USDT 1h,2024-07-01 to 2026-10-25,20309,crypto_spot,30/100,"lstm_eth-usdt_1h_fh_v1, xgb_eth-usdt_1h_tb_v1",sha256:673e8772c414

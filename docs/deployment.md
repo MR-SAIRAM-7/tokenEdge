@@ -59,6 +59,7 @@ app_port: 8000
 | `TOKENEDGE_CCXT_FALLBACKS` | `bybit,kucoin,okx` | Tried in order if the primary fails |
 | `TOKENEDGE_CORS_ORIGINS` | `http://localhost:5173,…` | Allowed origins for the dev server |
 | `TOKENEDGE_GIT_SHA` | from `git` | Code version stored with each run |
+| `TOKENEDGE_RUN_STUDY` | `0` | `1` = run the research study on start-up when the run history is empty (set in `docker-compose.yml` and `render.yaml`) |
 
 ## 5. Continuous integration
 

@@ -6,6 +6,8 @@ TokenEdge is a backtesting and signal-generation platform. It compares a classic
 
 > **Research question:** after costs, on data the models have never seen, does machine learning beat a simple rule?
 
+- Project report: [docs/report.md](docs/report.md)
+- Experiment results (tables and figures): [docs/results/](docs/results/README.md)
 - Product requirements: [docs/PRD.md](docs/PRD.md)
 - How to run and use it: [docs/user_guide.md](docs/user_guide.md)
 - Deployment: [docs/deployment.md](docs/deployment.md)
@@ -13,11 +15,13 @@ TokenEdge is a backtesting and signal-generation platform. It compares a classic
 ## Features
 
 - **Backtesting engine** with next-bar-open execution, commission presets (US, NSE, crypto), three slippage models (fixed, range-based, square-root impact), long/flat and long/short modes, and a full trade log. It matches Backtrader to within 0.2 percentage points.
-- **Strategies:** Buy & Hold, SMA/EMA crossover with train/validation grid search, XGBoost, and LSTM (ONNX).
-- **ML pipeline:** triple-barrier and fixed-horizon labels, purged and embargoed chronological splits, purged K-fold CV, and a trading threshold chosen by validation Sharpe after costs. Training runs in Google Colab notebooks.
+- **Strategies:** Buy & Hold, SMA/EMA crossover with train/validation grid search, XGBoost and LSTM (ONNX) with optional probability bet sizing, and an SMA + ML filter where a model must confirm the crossover's trades.
+- **ML pipeline:** triple-barrier and fixed-horizon labels, purged and embargoed chronological splits, purged K-fold CV, and a trading threshold chosen by validation Sharpe after costs. Feature sets v1 (technical) and v2 (adds a fractionally differentiated price). Training runs in Google Colab notebooks or a GitHub Actions workflow, never inside the app.
+- **Trained models:** XGBoost and LSTM for SPY, AAPL, RELIANCE.NS, TCS.NS, BTC/USDT and ETH/USDT are included in `models/`.
 - **Statistics:** Sharpe, Sortino, max drawdown, Calmar, Probabilistic and Deflated Sharpe Ratio, a stationary block-bootstrap test of the Sharpe difference, and cost sensitivity.
 - **Leakage guards:** a future-perturbation test for every feature and strategy, a fill-after-signal test, scalers fitted on training rows only, and an API guard that refuses ML backtests on training or validation data.
-- **Web app:** Dashboard, Data Explorer, Backtest Lab, Compare, Models, Run History and Methodology. Includes dark and light themes, CSV/JSON/PNG export and reproducible run history.
+- **Web app:** Dashboard, Findings, Data Explorer, Backtest Lab, Compare, Models, Run History and Methodology. Includes dark and light themes, CSV/JSON/PNG export, reproducible run history with bundle import/export, and shareable links that reopen a configuration exactly.
+- **Experiments:** E1–E7 (main comparison, cost sensitivity, labeling ablation, look-ahead bias, Deflated Sharpe, accuracy vs profit, ML filter and bet sizing), produced by one script or workflow into `docs/results/`.
 
 ## Quick start
 
@@ -30,7 +34,7 @@ cd web && npm ci && npm run build && cd ..
 uvicorn tokenedge.api.main:app --port 8000
 ```
 
-Open http://localhost:8000. Market data for 9 instruments is bundled in `data/snapshots/`, so it works offline (`TOKENEDGE_OFFLINE=1`).
+Open http://localhost:8000. Market data for 9 instruments is bundled in `data/snapshots/`, so it works offline (`TOKENEDGE_OFFLINE=1`). On the Findings page, **Run study** fills the run history with the research study's comparisons and backtests (about a minute).
 
 With Docker: `docker compose up --build`.
 
@@ -41,9 +45,9 @@ With Docker: `docker compose up --build`.
 | [00_data_exploration](notebooks/00_data_exploration.ipynb) | Data quality, returns, features, label balance |
 | [01_train_xgboost](https://colab.research.google.com/github/MR-SAIRAM-7/tokenEdge/blob/main/notebooks/01_train_xgboost.ipynb) | XGBoost with purged CV, exports `model.json` |
 | [02_train_lstm](https://colab.research.google.com/github/MR-SAIRAM-7/tokenEdge/blob/main/notebooks/02_train_lstm.ipynb) | LSTM on GPU, exports `model.onnx` |
-| [03_experiments](https://colab.research.google.com/github/MR-SAIRAM-7/tokenEdge/blob/main/notebooks/03_experiments.ipynb) | Experiments E1–E6 for the report |
+| [03_experiments](https://colab.research.google.com/github/MR-SAIRAM-7/tokenEdge/blob/main/notebooks/03_experiments.ipynb) | Experiments for the report |
 
-Each training notebook ends by downloading a zip. Unzip it into `models/` and the web app picks the model up automatically.
+Each training notebook ends by downloading a zip. Unzip it into `models/` and the web app picks the model up automatically. The **Train models** and **Experiments** GitHub Actions workflows run the same code on a cloud runner.
 
 ## Project layout
 
@@ -54,8 +58,8 @@ notebooks/        Colab notebooks (training, experiments)
 models/           Exported model artifacts (registry)
 data/snapshots/   Bundled OHLCV datasets for offline use
 tests/            unit, leakage, property-based, integration, Backtrader parity
-scripts/          download_snapshots.py, train.py, run_experiments.py
-docs/             PRD, user guide, deployment guide
+scripts/          download_snapshots.py, train.py, train_market.py, run_experiments.py
+docs/             report, PRD, user guide, deployment guide, results/
 ```
 
 ## Tech stack

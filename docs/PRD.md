@@ -5,9 +5,9 @@ Major Project — 4th Year
 
 | Field | Value |
 |---|---|
-| Document version | 1.1 |
+| Document version | 1.2 |
 | Date | 25 October 2026 |
-| Status | Approved; v0.1 implemented (see [Appendix C](#appendix-c--implementation-status)) |
+| Status | Approved; v0.2 implemented (see [Appendix C](#appendix-c--implementation-status)) |
 | Repository | https://github.com/MR-SAIRAM-7/tokenEdge |
 | Project team | _(add names / roll numbers)_ |
 | Project guide | _(add name)_ |
@@ -277,6 +277,7 @@ class Strategy(Protocol):
 | FR-E9 | Positions open at the end of the window are closed at the last bar's close, with costs, so that metrics are comparable. | M |
 | FR-E10 | Deterministic: identical inputs always give identical outputs. | M |
 | FR-E11 | **Backtrader cross-check**: run the same SMA strategy and cost settings in Backtrader. Total return must match within 0.5 percentage points and the trade count must match exactly. | S |
+| FR-E12 | **Interest on idle cash** at a configurable annual rate, defaulting to the risk-free rate used for the Sharpe ratio, so a strategy that stays flat has zero excess return instead of being penalised by the risk-free rate. | S |
 
 ### 7.6 ML training pipeline and model registry (`tokenedge.ml`, `notebooks/`)
 
@@ -610,6 +611,7 @@ The test windows contain different market regimes: the 2023–24 equity recovery
 | E4 | **Look-ahead bias experiment**: same XGBoost with (a) random K-fold and (b) a scaler fitted on all data | How much does leakage inflate backtest results? | Leaky vs clean Sharpe (educational) |
 | E5 | **Overfitting check**: DSR using the real trial counts | Does the best strategy survive multiple-testing correction? | DSR values |
 | E6 | **Accuracy vs profitability**: classification metrics against Sharpe | Does a higher AUC mean a higher Sharpe? | Scatter/table |
+| E7 | **Extensions**: each model as a confirmation filter on the tuned SMA (FR-S8), and with probability bet sizing (AFML Ch. 10) | Do the models add value as a filter or through position sizing rather than as stand-alone signals? | Paired metrics, Sharpe at rf = 0 |
 
 ### 11.4 Reporting standard
 
@@ -648,6 +650,11 @@ Base path: `/api`. The OpenAPI/Swagger docs are generated automatically at `/doc
 | GET | `/api/runs/{run_id}` | Full stored run. |
 | DELETE | `/api/runs/{run_id}` | Delete a run. |
 | GET | `/api/runs/{run_id}/export?format=csv\|json` | Download run data. |
+| GET | `/api/runs/bundle?ids=` | Every run (or the given IDs) as one JSON bundle (FR-R3). |
+| POST | `/api/runs/import` | Import a bundle or a single exported run; runs that already exist are skipped. |
+| GET | `/api/findings` | Latest comparison per market, condensed for the findings scoreboard. |
+| GET | `/api/markets/overview` | Last price, changes, volatility and a sparkline for each bundled market. |
+| GET | `/api/study/status` · POST `/api/study/run` | Status of, and trigger for, the research study (a fixed set of comparisons and backtests). |
 
 ### 12.1 Example: `POST /api/backtest`
 
@@ -769,7 +776,8 @@ tokenEdge/
 ├── tokenedge/                     # Core Python package
 │   ├── config.py                  # Settings (env vars), universe, default splits/labels
 │   ├── errors.py                  # Exceptions mapped to API error codes
-│   ├── experiments.py             # E1–E6 (used by notebook 03 and scripts/run_experiments.py)
+│   ├── experiments.py             # E1–E7 (used by notebook 03 and scripts/run_experiments.py)
+│   ├── study.py                   # The research study: comparisons and backtests behind the findings
 │   ├── data/
 │   │   ├── base.py                # OHLCV schema normalization
 │   │   ├── yfinance_source.py
@@ -810,7 +818,7 @@ tokenEdge/
 │       ├── schemas.py             # Pydantic request models
 │       ├── services.py            # Windows, guard, backtest/compare orchestration
 │       ├── db.py                  # SQLite run history (SQLAlchemy)
-│       └── routes/                # meta, data, models, backtest, runs
+│       └── routes/                # meta, data, models, backtest, runs, insights
 ├── web/                           # React 19 + TypeScript + Vite + Tailwind
 │   └── src/
 │       ├── pages/                 # Dashboard, DataExplorer, BacktestLab, Compare, Models, ModelDetail, Runs, RunView, Methodology
@@ -820,14 +828,14 @@ tokenEdge/
 ├── notebooks/                     # 00 exploration, 01 XGBoost, 02 LSTM, 03 experiments (Colab)
 ├── models/                        # Exported model artifacts (registry)
 ├── data/snapshots/                # Bundled OHLCV datasets (offline mode)
-├── scripts/                       # download_snapshots.py, train.py, run_experiments.py
+├── scripts/                       # download_snapshots.py, train.py, train_market.py, run_experiments.py
 ├── tests/
 │   ├── unit/                      # indicators, labels, engine (+ property-based), metrics, data, ML, strategies, experiments
 │   ├── leakage/                   # future-perturbation + execution-timing + window guard
 │   ├── integration/               # API tests (FastAPI TestClient)
 │   └── crosscheck/                # Backtrader parity (marker: crosscheck)
-├── docs/                          # PRD, user guide, deployment guide
-├── .github/workflows/ci.yml
+├── docs/                          # PRD, report, user guide, deployment guide, results/
+├── .github/workflows/             # ci.yml, train-models.yml, experiments.yml
 ├── Dockerfile, docker-compose.yml, render.yaml
 ├── pyproject.toml
 ├── requirements.txt               # Runtime (no torch)
@@ -907,6 +915,8 @@ flowchart LR
   5. `cd web && npm ci && npm run lint && npm run build`
 - **Docker job**: builds the image, starts it in offline mode and smoke-tests `/api/health` and a backtest.
 - **Deployment**: Render watches `main` (`autoDeploy: true` in `render.yaml`) and redeploys on every push.
+- **`train-models.yml`** (manual): trains XGBoost and LSTM for each market on a cloud CPU runner with the same pipeline as the notebooks and uploads the model folders as an artifact. An input selects a subset of markets.
+- **`experiments.yml`** (manual): runs E1–E7 on the bundled snapshots and committed models and uploads the tables, figures and summary that go into `docs/results/`.
 
 ### 16.6 Operations
 
@@ -989,7 +999,9 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 
 ## 21. Future scope
 
-- Walk-forward and combinatorial purged CV backtests (AFML Ch. 12) and the probability of backtest overfitting (PBO).
+- Walk-forward predictions with rolling re-training (FR-M11), combinatorial purged CV backtests (AFML Ch. 12) and the probability of backtest overfitting (PBO).
+- Full meta-labeling: a secondary model trained on the outcomes of the SMA's own trades, replacing the direction-model filter.
+- Browser end-to-end tests (Playwright) for the main user flows.
 - Multi-asset portfolios with risk parity or hierarchical risk parity (AFML Ch. 16).
 - Alternative bars (volume, dollar or imbalance bars, AFML Ch. 2) from trade data.
 - Transformer and temporal-convolution models. Sentiment features from news.
@@ -1130,7 +1142,7 @@ seed: 42
 
 ## Appendix C — Implementation status
 
-Status of v0.1 (25 October 2026).
+Status of v0.2 (25 October 2026).
 
 | Area | Status |
 |---|---|
@@ -1139,8 +1151,14 @@ Status of v0.1 (25 October 2026).
 | FR-S6 minimum holding period, FR-S7 schema-driven parameter forms | Implemented |
 | FR-X9 classification diagnostics, FR-X10 verdict generator | Implemented |
 | FR-V6 test-set lock counter | Implemented (shown on model cards) |
+| Trained models in `models/` (FR-M8) | Implemented: XGBoost (triple-barrier) and LSTM (fixed-horizon) for SPY, AAPL, RELIANCE.NS, TCS.NS, BTC/USDT and ETH/USDT, trained by the `train-models.yml` workflow with the notebook pipeline |
+| FR-R3 run bundle export and import | Implemented (Run History: Export all / Import; `/api/runs/bundle`, `/api/runs/import`) |
+| FR-F5 fractional differentiation | Implemented: `frac_diff` (fixed-width window), Data Explorer pane, feature set `v2` |
+| FR-S8 meta-labeling | Implemented as the **SMA + ML filter** strategy: the SMA decides the side and an existing direction model must confirm. A secondary model trained on the SMA's own trade outcomes remains future work. |
+| Probability bet sizing (AFML Ch. 10) | Implemented as `sizing: probability` on the XGBoost and LSTM strategies |
+| FR-E12 interest on idle cash | Implemented (`cash_rate`; defaults to the request's risk-free rate in the API and experiments, 0 in the bare engine and the Backtrader cross-check) |
+| URL-encoded form state (§13 UX rules) | Implemented for Backtest Lab and Compare, with a Share button |
+| Experiments E1–E7 with tables, figures and verdicts (deliverable 4) | Implemented in `docs/results/`, produced by `experiments.yml` |
 | Feature importance view, look-ahead bias experiment (E4) | Implemented |
-| NFR-6 coverage ≥ 85% on core modules | Met (about 91% overall; engine, metrics, labeling and validation 89–100%) |
-| Trained models in `models/` (FR-M8) | Pending: train in Colab with notebooks 01 and 02, then commit the folders |
-| FR-R3 run bundle import, FR-M11 walk-forward predictions | Not yet implemented |
-| Stretch: bet sizing, fractional differentiation, meta-labeling, multi-asset portfolios, Playwright end-to-end tests, URL-encoded form state | Not yet implemented |
+| NFR-6 coverage ≥ 85% on core modules | Met (91% overall; engine, metrics, labeling and validation 89–100%) |
+| FR-M11 walk-forward predictions, multi-asset portfolios, Playwright end-to-end tests | Not implemented; moved to [Future scope](#21-future-scope) |
