@@ -5,9 +5,9 @@ Major Project — 4th Year
 
 | Field | Value |
 |---|---|
-| Document version | 1.0 |
+| Document version | 1.1 |
 | Date | 25 October 2026 |
-| Status | Draft for review |
+| Status | Approved; v0.1 implemented (see [Appendix C](#appendix-c--implementation-status)) |
 | Repository | https://github.com/MR-SAIRAM-7/tokenEdge |
 | Project team | _(add names / roll numbers)_ |
 | Project guide | _(add name)_ |
@@ -43,6 +43,7 @@ Major Project — 4th Year
 23. [References](#23-references)
 24. [Appendix A — Metric formulas](#appendix-a--metric-formulas)
 25. [Appendix B — Default configuration](#appendix-b--default-configuration)
+26. [Appendix C — Implementation status](#appendix-c--implementation-status)
 
 ---
 
@@ -316,7 +317,7 @@ class Strategy(Protocol):
 | FR-V2 | **Causal signals**: the same perturbation test applied to every strategy's `generate_signals`. | M |
 | FR-V3 | **Next-bar execution**: an engine test asserts that every fill timestamp is strictly later than its signal timestamp. | M |
 | FR-V4 | **Scaler fit scope**: the scaler is fitted only on training rows. The fit window is stored in metadata and checked at load time. | M |
-| FR-V5 | **Window guard**: when a backtest uses an ML model, the API compares the requested window with the model's `train_end + embargo`. Overlap returns HTTP 409, unless the user explicitly sets `allow_in_sample=true`, in which case the result carries an **In-sample ⚠** flag. | M |
+| FR-V5 | **Window guard**: when a backtest uses an ML model, the API compares the requested start with the model's held-out start, which is the start of its test window (after validation plus embargo). Validation data counts as in-sample because it was used for early stopping and threshold selection. Overlap returns HTTP 409, unless the user explicitly sets `allow_in_sample=true`, in which case the result carries an **In-sample ⚠** flag. | M |
 | FR-V6 | **Test-set lock**: the default comparison window is the model's registered test window. Every evaluation on the test window is logged, with a counter shown in the UI. | S |
 | FR-V7 | **Documented limitations**: survivorship bias (yfinance only lists tickers that exist today) and adjusted-price caveats, shown on the Methodology page. | M |
 
@@ -444,13 +445,13 @@ sequenceDiagram
 | Statistics | `scipy`, `numpy` | PSR/DSR, bootstrap. |
 | API | **FastAPI**, `pydantic` v2, `uvicorn` | Fast, typed, auto-generated OpenAPI docs at `/docs`. |
 | Storage | **SQLite** via SQLAlchemy 2.x | Zero-configuration, file-based, enough for single-user research. |
-| Frontend | **React 18 + TypeScript + Vite** | Modern, fast builds, type safety. |
+| Frontend | **React 19 + TypeScript + Vite** | Modern, fast builds, type safety. |
 | UI styling | Tailwind CSS + shadcn/ui-style components | Clean professional look with little custom CSS. |
 | Charts | **TradingView Lightweight Charts** (price, trades); **Recharts** (equity, drawdown, bars) | Purpose-built financial charts plus flexible general charts. |
 | Data fetching | TanStack Query | Caching, loading and error states. |
 | Testing | `pytest`, `hypothesis`, `pytest-cov`; Vitest; Playwright (stretch) | Unit, property-based and end-to-end testing. |
 | Quality | `ruff`, `mypy`, ESLint, Prettier, pre-commit | Consistent code. |
-| Packaging and deployment | Docker (multi-stage), GitHub Actions, Hugging Face Spaces / Render | Free hosting, one container. |
+| Packaging and deployment | Docker (multi-stage), GitHub Actions, Render (Hugging Face Spaces as an alternative) | Free hosting, one container. |
 
 ### 9.4 Key design decisions
 
@@ -766,84 +767,72 @@ The response contains per-strategy `metrics` and `series`, a pairwise `sharpe_di
 ```
 tokenEdge/
 ├── tokenedge/                     # Core Python package
-│   ├── __init__.py
-│   ├── config.py                  # Settings (env vars, paths, defaults)
+│   ├── config.py                  # Settings (env vars), universe, default splits/labels
+│   ├── errors.py                  # Exceptions mapped to API error codes
+│   ├── experiments.py             # E1–E6 (used by notebook 03 and scripts/run_experiments.py)
 │   ├── data/
-│   │   ├── base.py                # DataSource protocol, schema normalization
+│   │   ├── base.py                # OHLCV schema normalization
 │   │   ├── yfinance_source.py
-│   │   ├── ccxt_source.py
-│   │   ├── cache.py               # Parquet cache, incremental refresh, hashing
-│   │   └── quality.py             # Data-quality checks
+│   │   ├── ccxt_source.py         # Pagination + exchange fallbacks
+│   │   ├── cache.py               # Parquet cache, data hash
+│   │   ├── loader.py              # cache -> snapshot -> download
+│   │   └── quality.py             # Data-quality report
 │   ├── features/
 │   │   ├── indicators.py          # SMA, EMA, RSI, MACD, BB, ATR …
 │   │   └── feature_sets.py        # build_features(df, "v1")
-│   ├── labeling/
-│   │   ├── fixed_horizon.py
-│   │   └── triple_barrier.py
-│   ├── strategies/
-│   │   ├── base.py                # Strategy protocol + registry
-│   │   ├── buy_hold.py
-│   │   ├── sma_crossover.py
-│   │   └── ml_strategy.py         # XGBoost + LSTM (ONNX) strategies
+│   ├── labeling/                  # fixed_horizon.py, triple_barrier.py
 │   ├── engine/
-│   │   ├── backtester.py          # Event-driven loop
-│   │   ├── broker.py              # Order fills
-│   │   ├── costs.py               # Commission + slippage models, presets
-│   │   └── portfolio.py           # Cash, positions, equity
-│   ├── metrics/
-│   │   ├── performance.py         # Sharpe, Sortino, MDD, CAGR …
-│   │   ├── statistics.py          # PSR, DSR, block bootstrap
-│   │   └── report.py              # Comparison + verdict
+│   │   ├── backtester.py          # Event-driven loop (next-bar-open fills)
+│   │   ├── costs.py               # Commission + slippage models, presets, ExecutionConfig
+│   │   └── trades.py              # Round-trip trade bookkeeping
+│   ├── strategies/
+│   │   ├── base.py                # Strategy interface + registry + min-hold
+│   │   ├── classical.py           # Buy & Hold, SMA/EMA crossover
+│   │   ├── ml_strategy.py         # XGBoost + LSTM strategies
+│   │   └── tuning.py              # SMA grid search on train/validation
 │   ├── ml/
 │   │   ├── splits.py              # Chronological splits, purge, embargo
 │   │   ├── cv.py                  # PurgedKFold
-│   │   ├── datasets.py            # Tabular + sequence dataset builders
-│   │   ├── xgb_model.py           # Train / export (used in Colab)
-│   │   ├── lstm_model.py          # Train / ONNX export (used in Colab; torch optional)
-│   │   └── registry.py            # Load metadata + artifacts for inference
-│   ├── validation/
-│   │   └── leakage.py             # Window guard, perturbation helpers
-│   ├── compat/
-│   │   └── backtrader_check.py    # Optional cross-validation with Backtrader
+│   │   ├── datasets.py            # Tabular + sequence datasets
+│   │   ├── evaluation.py          # Classification metrics (no sklearn)
+│   │   ├── training.py            # Threshold selection, metadata, zip export
+│   │   ├── xgb_model.py           # XGBoost training (Colab)
+│   │   ├── lstm_model.py          # LSTM training + ONNX export (Colab; torch imported lazily)
+│   │   └── registry.py            # Model discovery + inference (XGBoost JSON, ONNX Runtime)
+│   ├── metrics/
+│   │   ├── performance.py         # Sharpe, Sortino, MDD, CAGR, trade stats, monthly returns
+│   │   ├── statistics.py          # PSR, DSR, stationary block bootstrap
+│   │   └── report.py              # Comparison, verdict, cost sensitivity
+│   ├── validation/leakage.py      # Window guard, future-perturbation check
+│   ├── compat/backtrader_check.py # Parity check against Backtrader
 │   └── api/
-│       ├── main.py                # FastAPI app, static file serving
-│       ├── schemas.py             # Pydantic request/response models
-│       ├── routes/                # data, strategies, models, backtest, runs
-│       └── db.py                  # SQLAlchemy models + session
-├── web/                           # React + TypeScript + Vite frontend
-│   ├── src/
-│   │   ├── pages/                 # Dashboard, DataExplorer, BacktestLab, Compare, Models, Runs, Methodology
-│   │   ├── components/            # Charts, KPI tiles, forms, tables
-│   │   ├── api/                   # Typed API client
-│   │   └── main.tsx
-│   ├── package.json
-│   └── vite.config.ts
-├── notebooks/
-│   ├── 00_data_exploration.ipynb
-│   ├── 01_train_xgboost.ipynb     # Colab
-│   ├── 02_train_lstm.ipynb        # Colab
-│   └── 03_experiments.ipynb       # E1–E6 tables & figures for the report
-├── models/                        # Exported model artifacts (small, committed)
-├── data/snapshots/                # Offline demo datasets (committed)
-├── scripts/
-│   ├── download_snapshots.py
-│   ├── train.py                   # Optional CLI training (GPU users)
-│   └── run_experiments.py
+│       ├── main.py                # FastAPI app, error handlers, static SPA serving
+│       ├── schemas.py             # Pydantic request models
+│       ├── services.py            # Windows, guard, backtest/compare orchestration
+│       ├── db.py                  # SQLite run history (SQLAlchemy)
+│       └── routes/                # meta, data, models, backtest, runs
+├── web/                           # React 19 + TypeScript + Vite + Tailwind
+│   └── src/
+│       ├── pages/                 # Dashboard, DataExplorer, BacktestLab, Compare, Models, ModelDetail, Runs, RunView, Methodology
+│       ├── components/            # charts/, results views, forms, UI kit
+│       ├── api/                   # Typed client, React Query hooks
+│       └── lib/                   # formatting, palette, downsampling, export
+├── notebooks/                     # 00 exploration, 01 XGBoost, 02 LSTM, 03 experiments (Colab)
+├── models/                        # Exported model artifacts (registry)
+├── data/snapshots/                # Bundled OHLCV datasets (offline mode)
+├── scripts/                       # download_snapshots.py, train.py, run_experiments.py
 ├── tests/
-│   ├── unit/                      # indicators, labels, costs, engine, metrics
-│   ├── leakage/                   # future-perturbation + execution-timing tests
+│   ├── unit/                      # indicators, labels, engine (+ property-based), metrics, data, ML, strategies, experiments
+│   ├── leakage/                   # future-perturbation + execution-timing + window guard
 │   ├── integration/               # API tests (FastAPI TestClient)
-│   └── crosscheck/                # Backtrader parity (optional marker)
-├── docs/
-│   ├── PRD.md                     # This document
-│   ├── architecture.md
-│   └── user_guide.md
+│   └── crosscheck/                # Backtrader parity (marker: crosscheck)
+├── docs/                          # PRD, user guide, deployment guide
 ├── .github/workflows/ci.yml
-├── Dockerfile
-├── docker-compose.yml
+├── Dockerfile, docker-compose.yml, render.yaml
 ├── pyproject.toml
 ├── requirements.txt               # Runtime (no torch)
-├── requirements-train.txt         # Colab / training extras (torch, optuna)
+├── requirements-dev.txt           # Tests and tooling
+├── requirements-train.txt         # Colab / training extras (torch, onnx)
 └── README.md
 ```
 
@@ -874,33 +863,12 @@ tokenEdge/
 |---|---|---|
 | Local development | Day-to-day coding | `uvicorn tokenedge.api.main:app --reload` + `npm run dev` (Vite proxies `/api` to port 8000). |
 | Local Docker | Demo / viva on a laptop, offline-capable | `docker compose up` → http://localhost:8000 |
-| Cloud (public demo) | Shareable link for evaluators | **Hugging Face Spaces (Docker SDK)**, primary: free CPU tier with generous RAM. **Render** free web service as an alternative. |
+| Cloud (public demo) | Shareable link for evaluators | **Render** free web service via the `render.yaml` Blueprint (primary). **Hugging Face Spaces** (Docker SDK) as an alternative; it needs Git LFS for the binary snapshot and model files. |
 | Training | Model training | Google Colab (GPU runtime) using the notebooks in `notebooks/`. |
 
 ### 16.2 Docker (multi-stage)
 
-```dockerfile
-# Stage 1 — build the frontend
-FROM node:20-alpine AS web
-WORKDIR /web
-COPY web/package*.json ./
-RUN npm ci
-COPY web/ ./
-RUN npm run build
-
-# Stage 2 — Python runtime (no PyTorch, ONNX Runtime only)
-FROM python:3.11-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 TOKENEDGE_STATIC_DIR=/app/static
-WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY tokenedge/ ./tokenedge/
-COPY models/ ./models/
-COPY data/snapshots/ ./data/snapshots/
-COPY --from=web /web/dist ./static
-EXPOSE 8000
-CMD ["sh", "-c", "uvicorn tokenedge.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
-```
+See [`Dockerfile`](../Dockerfile). Stage 1 (`node:22-slim`) runs `npm ci && npm run build`. Stage 2 (`python:3.11-slim` + `libgomp1` for XGBoost) installs `requirements.txt` (no PyTorch), copies the package, `models/`, `data/snapshots/` and the built UI, and runs uvicorn as an unprivileged user on `$PORT`. A container health check calls `/api/health`. Writable state (download cache, SQLite) lives in `/app/var`.
 
 ### 16.3 Configuration (environment variables)
 
@@ -937,7 +905,8 @@ flowchart LR
   3. `ruff check`, `mypy tokenedge`
   4. `pytest -m "not crosscheck" --cov`
   5. `cd web && npm ci && npm run lint && npm run build`
-- **`deploy.yml`** (push to `main`, stretch): build the Docker image and push it to the Hugging Face Space remote, or trigger a Render deploy hook.
+- **Docker job**: builds the image, starts it in offline mode and smoke-tests `/api/health` and a backtest.
+- **Deployment**: Render watches `main` (`autoDeploy: true` in `render.yaml`) and redeploys on every push.
 
 ### 16.6 Operations
 
@@ -976,7 +945,7 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 | R5 | Overfitting during hyperparameter search | Medium | High | Purged CV, trial counting, DSR, test set touched once. |
 | R6 | Backtrader is unmaintained and breaks on new Python or matplotlib versions | Medium | Low | Used only for the optional cross-check, without plotting. Pin versions. The core engine has no dependency on it. |
 | R7 | Colab session limits interrupt training | Medium | Low | Models are small (minutes to train). Checkpoint to Google Drive. |
-| R8 | Free hosting sleeps or has low memory | Medium | Medium | ONNX-only runtime (no torch). Hugging Face Spaces as primary. Local Docker as the demo fallback. |
+| R8 | Free hosting sleeps or has low memory | Medium | Medium | ONNX-only runtime (no torch) fits Render's free 512 MB. Open the site a few minutes before a review. Local Docker as the demo fallback. |
 | R9 | Python 3.14 wheel availability for some libraries on the developer laptop | Low | Medium | Target Python 3.11/3.12 in Docker and CI. Use a virtual environment. |
 | R10 | Scope creep (too many stretch features) | Medium | Medium | MoSCoW priorities. Stretch items start only after M5. |
 
@@ -1156,3 +1125,22 @@ metrics:
 
 seed: 42
 ```
+
+---
+
+## Appendix C — Implementation status
+
+Status of v0.1 (25 October 2026).
+
+| Area | Status |
+|---|---|
+| All **Must** requirements (FR-D, FR-F, FR-L, FR-S, FR-E, FR-M, FR-X, FR-V, FR-W, FR-R1/R2) | Implemented |
+| FR-E11 Backtrader cross-check | Implemented: same entries, total return within 0.2 pp (`pytest -m crosscheck`) |
+| FR-S6 minimum holding period, FR-S7 schema-driven parameter forms | Implemented |
+| FR-X9 classification diagnostics, FR-X10 verdict generator | Implemented |
+| FR-V6 test-set lock counter | Implemented (shown on model cards) |
+| Feature importance view, look-ahead demonstration (E4) | Implemented |
+| NFR-6 coverage ≥ 85% on core modules | Met (about 91% overall; engine, metrics, labeling and validation 89–100%) |
+| Trained models in `models/` (FR-M8) | Pending: train in Colab with notebooks 01 and 02, then commit the folders |
+| FR-R3 run bundle import, FR-M11 walk-forward predictions | Not yet implemented |
+| Stretch: bet sizing, fractional differentiation, meta-labeling, multi-asset portfolios, Playwright end-to-end tests, URL-encoded form state | Not yet implemented |

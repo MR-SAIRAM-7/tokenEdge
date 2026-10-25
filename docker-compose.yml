@@ -1,0 +1,18 @@
+services:
+  tokenedge:
+    build:
+      context: .
+    image: tokenedge:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Set to "1" to never call Yahoo / exchanges (bundled snapshots only), e.g. for a viva demo.
+      TOKENEDGE_OFFLINE: "0"
+    volumes:
+      # Drop newly trained model folders into ./models without rebuilding the image.
+      - ./models:/app/models:ro
+      - tokenedge-var:/app/var
+    restart: unless-stopped
+
+volumes:
+  tokenedge-var:

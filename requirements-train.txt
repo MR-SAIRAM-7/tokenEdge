@@ -1,0 +1,5 @@
+# Extra packages for training in Google Colab (GPU). Not needed by the web app.
+torch>=2.2
+onnx>=1.16
+onnxscript>=0.1
+matplotlib>=3.8

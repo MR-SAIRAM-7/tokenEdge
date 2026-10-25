@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #f1f3f6;
+  --line: #e2e5ea;
+  --grid: #eceef1;
+  --axis: #c3c2b7;
+  --fg: #0f1115;
+  --fg-2: #4b5160;
+  --muted: #747b8a;
+  --accent: #2a78d6;
+  --accent-soft: rgba(42, 120, 214, 0.1);
+  --pos: #0b7a3b;
+  --neg: #c43a3a;
+  --warn: #a86b00;
+  --warn-soft: rgba(250, 178, 25, 0.14);
+  --ok-soft: rgba(12, 163, 12, 0.1);
+  --neg-soft: rgba(208, 59, 59, 0.1);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --panel: #14161a;
+  --panel-2: #1b1e23;
+  --line: #262a31;
+  --grid: #20242a;
+  --axis: #383835;
+  --fg: #eef0f3;
+  --fg-2: #b8bdc7;
+  --muted: #868d9a;
+  --accent: #3987e5;
+  --accent-soft: rgba(57, 135, 229, 0.14);
+  --pos: #2fbf5b;
+  --neg: #e66767;
+  --warn: #fab219;
+  --warn-soft: rgba(250, 178, 25, 0.12);
+  --ok-soft: rgba(12, 163, 12, 0.14);
+  --neg-soft: rgba(230, 103, 103, 0.14);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok-soft: var(--ok-soft);
+  --color-neg-soft: var(--neg-soft);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recharts: keep chart chrome recessive */
+.recharts-cartesian-axis-tick-value {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--grid);
+}
+.recharts-surface:focus,
+.recharts-wrapper:focus,
+.recharts-sector:focus {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+}
+
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.4;
+}

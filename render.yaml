@@ -1,0 +1,13 @@
+# Render Blueprint: New > Blueprint > pick this repository. Free plan, Docker runtime.
+services:
+  - type: web
+    name: tokenedge
+    runtime: docker
+    plan: free
+    region: frankfurt # crypto exchange APIs block US IPs; snapshots work anywhere
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: TOKENEDGE_OFFLINE
+        value: "0"

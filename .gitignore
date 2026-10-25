@@ -30,3 +30,8 @@ data_cache/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local tooling and exports
+.claude/
+models/*.zip
+tokenedge_results.zip
