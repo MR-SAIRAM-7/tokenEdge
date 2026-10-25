@@ -73,6 +73,8 @@ export interface ExecutionIn {
   commission?: Commission | null;
   slippage?: Slippage | null;
   borrow_rate: number;
+  /** Annual interest on idle cash; null = the risk-free rate. */
+  cash_rate?: number | null;
 }
 
 export interface StrategySpec {

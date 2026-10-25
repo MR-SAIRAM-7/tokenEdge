@@ -75,6 +75,19 @@ def test_bootstrap_detects_difference_and_identity():
     assert sum(diff["histogram"]["counts"]) == 2000
 
 
+def test_bootstrap_of_nearly_flat_strategy_stays_finite():
+    """A strategy flat on almost every bar: resamples that miss its few trades are constant,
+    and their Sharpe must count as zero rather than blow up from rounding noise."""
+    rng = np.random.default_rng(3)
+    active = rng.normal(0.0005, 0.01, 20_000)
+    flat = np.zeros(20_000)
+    flat[[500, 9_000, 15_000]] = [0.01, -0.02, 0.005]
+    res = bootstrap_sharpe_difference(flat, active, 8760, n_samples=2000, rf_annual=0.04)
+    assert np.isfinite([res["ci_low"], res["ci_high"]]).all()
+    assert -100 < res["ci_low"] <= res["ci_high"] < 100
+    assert max(abs(e) for e in res["histogram"]["edges"]) < 100
+
+
 def test_compare_and_cost_sensitivity(daily):
     cfg = ExecutionConfig(commission={"buy_bps": 5, "sell_bps": 5})
     sigs = {

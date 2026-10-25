@@ -234,14 +234,12 @@ def figures(out: Path, e1: pd.DataFrame, runs: list[MarketRun], e2, e3, e4, e6, 
         _grouped_bars(
             ax,
             t7,
-            "sharpe_rf0",
+            "sharpe",
             present,
             [palette[k] for k in present],
             [names[k] for k in present],
         )
-        ax.set_title(
-            "Sharpe ratio (rf = 0) of the extensions, mean over each market's models", pad=26
-        )
+        ax.set_title("E7: Sharpe ratio of the extensions, mean over each market's models", pad=26)
         fig.tight_layout()
         fig.savefig(out / "e7_extensions.png")
         plt.close(fig)
@@ -412,7 +410,7 @@ def main() -> None:
         (
             "e7_extensions",
             "E7: ML filter and bet sizing",
-            "Each model as a confirmation filter on the tuned SMA, and with probability bet sizing (AFML Ch. 10), on the same window and costs. Idle cash earns no interest in the engine, so `sharpe` (risk-free rate 4%) penalises strategies that hold smaller positions; `sharpe_rf0` is the scale-free comparison and is the one plotted.",
+            "Each model as a confirmation filter on the tuned SMA, and with probability bet sizing (AFML Ch. 10), on the same window and costs. Idle cash earns the risk-free rate, so holding smaller positions is not penalised in the Sharpe ratio.",
         ),
     ):
         df = tables[name]

@@ -6,6 +6,8 @@ Timing contract (prevents look-ahead):
     * the portfolio is marked to market at each bar's close.
 Positions are only changed when the target changes, so equity drift never causes
 micro-rebalancing trades. Any position still open on the last bar is closed at its close.
+Idle cash earns ``config.cash_rate`` per year, accrued bar by bar, so a strategy that stays
+out of the market earns the risk-free rate rather than nothing.
 """
 
 from __future__ import annotations
@@ -100,7 +102,7 @@ def run_backtest(
     current_target = 0.0
     book = TradeBook()
     fills: list[dict] = []
-    totals = {"fees": 0.0, "slippage": 0.0, "borrow": 0.0, "traded_value": 0.0}
+    totals = {"fees": 0.0, "slippage": 0.0, "borrow": 0.0, "interest": 0.0, "traded_value": 0.0}
 
     n = i1 - i0 + 1
     eq_arr = np.empty(n)
@@ -163,6 +165,14 @@ def run_backtest(
             cash -= borrow
             totals["borrow"] += borrow
             book.accrue_borrow(borrow)
+
+        if config.cash_rate != 0.0:
+            # Interest on the trader's own idle capital: cash not tied up in a long position,
+            # and never short-sale proceeds (min with equity), at the bar's close.
+            idle = max(min(cash, cash + qty * c[i]), 0.0)
+            interest = idle * config.cash_rate / periods_per_year
+            cash += interest
+            totals["interest"] += interest
 
         if i == i1 and qty != 0.0:
             execute(i, -qty, c[i], "end_of_window")

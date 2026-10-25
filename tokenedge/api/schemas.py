@@ -32,8 +32,17 @@ class ExecutionIn(BaseModel):
     commission: CommissionModel | None = None
     slippage: SlippageModel | None = None
     borrow_rate: float = Field(0.0, ge=0, le=1)
+    cash_rate: float | None = Field(
+        None,
+        ge=-0.05,
+        le=1,
+        description="Annual interest on idle cash. Empty = the risk-free rate used for the Sharpe "
+        "ratio, so a strategy that stays flat has a Sharpe of about zero.",
+    )
 
-    def to_config(self, symbol: str, source: str) -> tuple[ExecutionConfig, str | None]:
+    def to_config(
+        self, symbol: str, source: str, risk_free_rate: float = DEFAULT_RISK_FREE_RATE
+    ) -> tuple[ExecutionConfig, str | None]:
         preset = self.preset
         if preset is None and self.commission is None and self.slippage is None:
             preset = default_cost_preset_for(symbol, source)
@@ -47,6 +56,7 @@ class ExecutionIn(BaseModel):
             "mode": self.mode,
             "max_leverage": self.max_leverage,
             "borrow_rate": self.borrow_rate,
+            "cash_rate": self.cash_rate if self.cash_rate is not None else risk_free_rate,
         }
         if self.fractional is not None:
             update["fractional"] = self.fractional

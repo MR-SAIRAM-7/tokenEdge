@@ -268,8 +268,8 @@ export default function Methodology() {
             <b>One asset at a time:</b> no portfolio construction or cross-asset signals.
           </li>
           <li>
-            <b>Idle cash earns nothing:</b> the engine pays no interest on uninvested cash, while the Sharpe ratio subtracts a 4% risk-free rate. Strategies that are often flat,
-            or that hold small positions (probability bet sizing), are penalised for it; compare them with the Sharpe at a 0% rate as well.
+            <b>Interest on cash:</b> idle cash earns the risk-free rate (4% a year by default, the same rate the Sharpe ratio subtracts), so a strategy that stays flat has a
+            Sharpe of about zero. Real cash yields vary by broker and market, and crypto stablecoins may earn nothing.
           </li>
           <li>
             <b>Regimes change:</b> a held-out period is still one historical path. Treat results as evidence, not a forecast.

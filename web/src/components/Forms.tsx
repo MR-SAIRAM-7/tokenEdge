@@ -271,6 +271,9 @@ export function ExecutionPanel({ value, onChange, advancedOpen = false }: { valu
               ]}
             />
           </Field>
+          <Field label="Interest on idle cash" help="Annual rate earned on cash not in a position, e.g. 0.04 = 4%. Empty = the 4% risk-free rate the Sharpe ratio subtracts, so a strategy that stays flat scores about zero.">
+            <NumberInput value={value.cash_rate ?? null} min={0} max={1} step={0.005} placeholder="0.04 (risk-free)" onChange={(x) => onChange({ ...value, cash_rate: x })} />
+          </Field>
           {value.mode === "long_short" && (
             <Field label="Borrow rate (annual)" help="Cost of borrowing for short positions, e.g. 0.02 = 2% per year.">
               <NumberInput value={value.borrow_rate} min={0} max={1} step={0.005} onChange={(x) => onChange({ ...value, borrow_rate: x ?? 0 })} />
@@ -296,5 +299,6 @@ export function cleanExecution(e: ExecutionIn): ExecutionIn {
   if (!out.commission) delete out.commission;
   if (!out.slippage) delete out.slippage;
   if (out.fractional === null || out.fractional === undefined) delete out.fractional;
+  if (out.cash_rate === null || out.cash_rate === undefined) delete out.cash_rate;
   return out;
 }

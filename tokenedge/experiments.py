@@ -24,7 +24,7 @@ from tokenedge.data.loader import get_ohlcv, slice_window, to_utc
 from tokenedge.engine.backtester import BacktestResult, run_backtest
 from tokenedge.engine.costs import ExecutionConfig, execution_from_preset
 from tokenedge.labeling import make_labels
-from tokenedge.metrics.performance import compute_metrics, finite, sharpe_ratio
+from tokenedge.metrics.performance import compute_metrics
 from tokenedge.metrics.report import compare_strategies, cost_sensitivity
 from tokenedge.ml.datasets import build_dataset
 from tokenedge.ml.evaluation import classification_report
@@ -69,7 +69,10 @@ def run_market(
     df = get_ohlcv(symbol, source, interval)
     splits = default_splits(source)
     ppy = periods_per_year(interval, asset_class_of(source))
-    cfg = execution_from_preset(default_cost_preset_for(symbol, source))
+    # Idle cash earns the same rate the Sharpe ratio subtracts (as in the API).
+    cfg = execution_from_preset(default_cost_preset_for(symbol, source)).model_copy(
+        update={"cash_rate": rf_annual}
+    )
 
     tune = grid_search_sma(df, splits.train, splits.val, cfg, ppy, rf_annual=rf_annual)
     models = [
@@ -222,9 +225,6 @@ def e7_extensions(runs: list[MarketRun], rf_annual: float = DEFAULT_RISK_FREE_RA
                     "label": label,
                     "total_return": m["total_return"],
                     "sharpe": m["sharpe"],
-                    # Idle cash earns nothing in the engine, so with rf > 0 any strategy that
-                    # holds smaller positions is penalised; the rf = 0 Sharpe is scale-free.
-                    "sharpe_rf0": finite(sharpe_ratio(res.returns, ppy, 0.0)),
                     "max_drawdown": m["max_drawdown"],
                     "exposure": m["exposure"],
                     "trades": m["trades"],
@@ -292,7 +292,9 @@ def e3_label_ablation(
 
     df = get_ohlcv(symbol, source, interval)
     ppy = periods_per_year(interval, asset_class_of(source))
-    cfg = execution_from_preset(default_cost_preset_for(symbol, source))
+    cfg = execution_from_preset(default_cost_preset_for(symbol, source)).model_copy(
+        update={"cash_rate": DEFAULT_RISK_FREE_RATE}
+    )
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
         for method in ("fixed_horizon", "triple_barrier"):
@@ -342,7 +344,9 @@ def e4_lookahead_bias(
     """
     df = get_ohlcv(symbol, source, interval)
     ppy = periods_per_year(interval, asset_class_of(source))
-    cfg = execution_from_preset(default_cost_preset_for(symbol, source))
+    cfg = execution_from_preset(default_cost_preset_for(symbol, source)).model_copy(
+        update={"cash_rate": DEFAULT_RISK_FREE_RATE}
+    )
     splits = SplitWindows.from_config(default_splits(source))
     ds = build_dataset(df, "v1", interval, default_label_config("fixed_horizon", interval))
     parts = assign_splits(pd.DatetimeIndex(ds.X.index), ds.t1, splits)

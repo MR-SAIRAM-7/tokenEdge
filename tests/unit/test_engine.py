@@ -96,6 +96,31 @@ def test_long_flat_clips_shorts_and_long_short_borrows(daily):
     assert short.trades.iloc[0]["side"] == "short"
 
 
+def test_idle_cash_earns_interest(daily):
+    from tokenedge.metrics import sharpe_ratio
+
+    flat_sig = pd.Series(0.0, index=daily.index)
+    start, end = daily.index[100], daily.index[351]
+    flat = run_backtest(daily, flat_sig, start, end, _cfg(cash_rate=0.04), 252)
+    n = len(flat.equity)
+    assert flat.equity.iloc[-1] == pytest.approx(100_000 * (1 + 0.04 / 252) ** n, rel=1e-12)
+    assert flat.totals["interest"] == pytest.approx(flat.equity.iloc[-1] - 100_000)
+    # Earning exactly the risk-free rate means an excess return of zero, hence a zero Sharpe.
+    assert sharpe_ratio(flat.returns, 252, 0.04) == 0.0
+
+    # Fully invested: only leftover cash earns interest, so the result barely moves.
+    long_sig = pd.Series(1.0, index=daily.index)
+    plain = run_backtest(daily, long_sig, start, end, _cfg(), 252)
+    paid = run_backtest(daily, long_sig, start, end, _cfg(cash_rate=0.04), 252)
+    assert paid.totals["interest"] < 1.0
+    assert paid.equity.iloc[-1] == pytest.approx(plain.equity.iloc[-1], rel=1e-5)
+
+    # Short: interest on the trader's own capital, never on the short-sale proceeds.
+    short = run_backtest(daily, -long_sig, start, end, _cfg(mode="long_short", cash_rate=0.04), 252)
+    cap = short.equity.max() * 0.04 / 252 * n
+    assert 0 < short.totals["interest"] <= cap
+
+
 def test_empty_window_raises(daily):
     with pytest.raises(InsufficientDataError):
         run_backtest(daily, pd.Series(1.0, index=daily.index), "2040-01-01", None, _cfg())

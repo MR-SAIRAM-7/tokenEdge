@@ -65,6 +65,12 @@ class ExecutionConfig(BaseModel):
     commission: CommissionModel = Field(default_factory=CommissionModel)
     slippage: SlippageModel = Field(default_factory=SlippageModel)
     borrow_rate: float = Field(0.0, ge=0, le=1, description="Annual borrow cost on short notional")
+    cash_rate: float = Field(
+        0.0,
+        ge=-0.05,
+        le=1,
+        description="Annual interest on idle cash (the trader's own capital not in a position)",
+    )
 
     def per_side_cost_bps(self) -> float:
         """Rough round-number view of costs used in reports (fixed slippage only)."""

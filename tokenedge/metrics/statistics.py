@@ -123,14 +123,21 @@ def _block_sums(prefix: np.ndarray, starts: np.ndarray, lengths: np.ndarray) -> 
     return (prefix[starts + lengths] - prefix[starts]).sum(axis=1)
 
 
+# The variance from prefix sums, s2 - n * mean^2, cancels catastrophically for a resample that
+# is (nearly) constant, e.g. one that misses every trade of a mostly-flat strategy. What is left
+# is rounding noise from prefix sums over the whole series, so the floor scales with the
+# series' mean square: a resample whose variance is below this fraction of it counts as flat.
+REL_VAR_FLOOR = 1e-9
+
+
 def _sharpe_from_sums(
-    s1: np.ndarray, s2: np.ndarray, n: int, periods_per_year: float
+    s1: np.ndarray, s2: np.ndarray, n: int, periods_per_year: float, sd_floor: float = MIN_STD
 ) -> np.ndarray:
     mean = s1 / n
     var = np.maximum((s2 - n * mean**2) / (n - 1), 0.0)
     sd = np.sqrt(var)
     out = np.zeros_like(mean)
-    ok = sd > MIN_STD
+    ok = sd > max(sd_floor, MIN_STD)
     out[ok] = mean[ok] / sd[ok] * math.sqrt(periods_per_year)
     return out
 
@@ -177,6 +184,8 @@ def bootstrap_sharpe_difference(
     prefixes = [
         np.concatenate([[0.0], np.cumsum(np.concatenate([x, x]))]) for x in (a, a * a, b, b * b)
     ]
+    floor_a = math.sqrt(REL_VAR_FLOOR * float(np.mean(a * a)))
+    floor_b = math.sqrt(REL_VAR_FLOOR * float(np.mean(b * b)))
     k_est = int(2 * n / block) + 50
     chunk = max(1, min(n_samples, int(4_000_000 // k_est)))
     diffs = []
@@ -186,8 +195,8 @@ def bootstrap_sharpe_difference(
         starts, lengths = stationary_bootstrap_blocks(n, m, block, rng)
         sa1, sa2, sb1, sb2 = (_block_sums(px, starts, lengths) for px in prefixes)
         diffs.append(
-            _sharpe_from_sums(sa1, sa2, n, periods_per_year)
-            - _sharpe_from_sums(sb1, sb2, n, periods_per_year)
+            _sharpe_from_sums(sa1, sa2, n, periods_per_year, floor_a)
+            - _sharpe_from_sums(sb1, sb2, n, periods_per_year, floor_b)
         )
         done += m
     dist = np.concatenate(diffs)

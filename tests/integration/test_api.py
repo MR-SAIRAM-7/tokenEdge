@@ -199,6 +199,14 @@ def test_run_bundle_round_trip(client):
     assert client.post("/api/runs/import", content=b"not json").status_code == 422
 
 
+def test_idle_cash_rate_defaults_to_risk_free_rate(client):
+    body = {**SYN, "strategy": {"name": "buy_hold"}, "save": False}
+    default = client.post("/api/backtest", json={**body, "risk_free_rate": 0.03}).json()
+    assert default["execution"]["cash_rate"] == 0.03
+    off = client.post("/api/backtest", json={**body, "execution": {"cash_rate": 0}}).json()
+    assert off["execution"]["cash_rate"] == 0
+
+
 def test_reproducible_results(client):
     body = {
         **SYN,

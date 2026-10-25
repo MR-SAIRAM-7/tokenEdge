@@ -294,7 +294,7 @@ def _strategy_meta(p: Prepared) -> dict:
 
 def backtest(req: BacktestRequest) -> dict:
     warnings: list[str] = []
-    cfg, preset = req.execution.to_config(req.symbol, req.source)
+    cfg, preset = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
     data = load_history(req, req.end if req.window == "custom" else None)
     prepared = prepare_strategies([req.strategy], req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
@@ -367,7 +367,7 @@ def backtest(req: BacktestRequest) -> dict:
 
 def compare(req: CompareRequest) -> dict:
     warnings: list[str] = []
-    cfg, preset = req.execution.to_config(req.symbol, req.source)
+    cfg, preset = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
     data = load_history(req, req.end if req.window == "custom" else None)
     prepared = prepare_strategies(req.strategies, req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
@@ -451,7 +451,7 @@ def compare(req: CompareRequest) -> dict:
 
 def sensitivity(req: SensitivityRequest) -> dict:
     warnings: list[str] = []
-    cfg, _ = req.execution.to_config(req.symbol, req.source)
+    cfg, _ = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
     data = load_history(req, req.end if req.window == "custom" else None)
     prepared = prepare_strategies(req.strategies, req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
@@ -472,7 +472,7 @@ def sensitivity(req: SensitivityRequest) -> dict:
 
 
 def tune_sma(req: TuneRequest) -> dict:
-    cfg, preset = req.execution.to_config(req.symbol, req.source)
+    cfg, preset = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
     splits = default_splits(req.source)
     data = load_history(req, splits.val[1])
     ppy = periods_per_year(req.interval, asset_class_of(req.source))
