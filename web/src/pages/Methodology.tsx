@@ -176,7 +176,8 @@ export default function Methodology() {
         <p>
           Every indicator uses right-aligned rolling windows or recursive averages, so the value at bar <i>t</i> depends only on bars ≤ <i>t</i>. This is tested, not assumed:
           the <b>future-perturbation test</b> computes features and signals on data up to <i>t</i>, appends random future bars, recomputes, and requires the values up to{" "}
-          <i>t</i> to be identical. It runs for every feature and every strategy, including the ML models.
+          <i>t</i> to be identical. It runs for every feature and every strategy, including the ML models, the probability-sized positions and the SMA + ML filter.
+          The fractionally differentiated price (feature set v2) applies a fixed window of weights to past log prices only, so it passes the same test.
         </p>
         <p>
           The LSTM's feature scaler is fitted on training rows only. The training notebooks cut the data off at the end of the validation window before building anything, so
@@ -265,6 +266,10 @@ export default function Methodology() {
           </li>
           <li>
             <b>One asset at a time:</b> no portfolio construction or cross-asset signals.
+          </li>
+          <li>
+            <b>Idle cash earns nothing:</b> the engine pays no interest on uninvested cash, while the Sharpe ratio subtracts a 4% risk-free rate. Strategies that are often flat,
+            or that hold small positions (probability bet sizing), are penalised for it; compare them with the Sharpe at a 0% rate as well.
           </li>
           <li>
             <b>Regimes change:</b> a held-out period is still one historical path. Treat results as evidence, not a forecast.

@@ -29,6 +29,12 @@ const OBJECTIVES = [
     to: "/findings",
     cta: "View the findings",
   },
+  {
+    title: "Extensions beyond the brief",
+    text: "An SMA + ML filter in the spirit of meta-labeling, probability bet sizing (AFML Ch. 10), fractionally differentiated price features (AFML Ch. 5), shareable configuration links and run import/export.",
+    to: "/compare",
+    cta: "Compare with the ML filter",
+  },
 ];
 
 const STACK: { group: string; items: string[] }[] = [
