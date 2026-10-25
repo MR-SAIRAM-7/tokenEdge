@@ -88,13 +88,20 @@ def load_history(market: MarketIn, end: str | None = None) -> pd.DataFrame:
     return df
 
 
-def _label_for(spec: StrategySpec, strategy: Strategy) -> str:
+MODEL_TYPE_LABELS = {"xgboost": "XGBoost", "lstm": "LSTM"}
+
+
+def _label_for(spec: StrategySpec, strategy: Strategy, meta: dict | None = None) -> str:
     if spec.label:
         return spec.label
     p = strategy.params.model_dump()
-    if strategy.name == "sma_crossover":
+    if strategy.name in ("sma_crossover", "sma_ml_filter"):
         prefix = "EMA" if p.get("ma_type") == "ema" else "SMA"
-        return f"{prefix} {p['fast']}/{p['slow']}"
+        label = f"{prefix} {p['fast']}/{p['slow']}"
+        if strategy.name == "sma_ml_filter" and meta:
+            kind = meta.get("model_type", "")
+            label += f" + {MODEL_TYPE_LABELS.get(kind, kind)} filter"
+        return label
     return strategy.label
 
 
@@ -113,7 +120,7 @@ def prepare_strategies(
         trial_std = spec.trial_sharpe_std
         if isinstance(strategy, MLStrategy):
             meta = registry.info(strategy.params.model_id).metadata  # type: ignore[attr-defined]
-            if meta.get("model_type") != strategy.model_type:
+            if strategy.model_type and meta.get("model_type") != strategy.model_type:
                 raise ConfigError(
                     f"Model '{meta.get('model_id')}' is a {meta.get('model_type')} model, "
                     f"but strategy '{spec.name}' needs a {strategy.model_type} model."
@@ -134,7 +141,7 @@ def prepare_strategies(
         seen[spec.name] = count
         key = spec.name if count == 1 else f"{spec.name}_{count}"
         prepared.append(
-            Prepared(key, spec, strategy, _label_for(spec, strategy), trials, trial_std, meta)
+            Prepared(key, spec, strategy, _label_for(spec, strategy, meta), trials, trial_std, meta)
         )
     return prepared
 
@@ -352,7 +359,7 @@ def backtest(req: BacktestRequest) -> dict:
             "backtest",
             req.model_dump(),
             response,
-            {p.key: _summary_metrics(metrics)},
+            {p.key: db.summary_metrics(metrics)},
             g["test_models"],
         )
     return response
@@ -436,7 +443,7 @@ def compare(req: CompareRequest) -> dict:
             "compare",
             req.model_dump(),
             response,
-            {k: _summary_metrics(m) for k, m in report["metrics"].items()},
+            {k: db.summary_metrics(m) for k, m in report["metrics"].items()},
             g["test_models"],
         )
     return response
@@ -481,8 +488,3 @@ def tune_sma(req: TuneRequest) -> dict:
         req.risk_free_rate,
     )
     return {**result, "symbol": req.symbol, "interval": req.interval, "preset": preset}
-
-
-def _summary_metrics(m: dict) -> dict:
-    keys = ("total_return", "cagr", "sharpe", "sortino", "max_drawdown", "calmar", "trades", "psr")
-    return {k: m.get(k) for k in keys}

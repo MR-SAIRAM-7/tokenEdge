@@ -39,12 +39,12 @@ def _error(status: int, code: str, message: str, details: dict | None = None) ->
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.session().close()  # creates tables on first start
-    if os.getenv("TOKENEDGE_DEMO_SEED", "0").lower() in {"1", "true", "yes"}:
-        from tokenedge import demo
+    if os.getenv("TOKENEDGE_RUN_STUDY", "0").lower() in {"1", "true", "yes"}:
+        from tokenedge import study
 
-        if not demo.has_runs():
-            log.info("TOKENEDGE_DEMO_SEED is set and the run history is empty: seeding demo runs")
-            demo.seed_in_background()
+        if not study.has_runs():
+            log.info("TOKENEDGE_RUN_STUDY is set and the run history is empty: running the study")
+            study.run_in_background()
     yield
 
 

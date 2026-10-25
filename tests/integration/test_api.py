@@ -8,7 +8,7 @@ def test_meta_endpoints(client):
     h = client.get("/api/health").json()
     assert h["status"] == "ok" and h["offline"] is True and h["models"] == 2
     names = {s["name"] for s in client.get("/api/strategies").json()["items"]}
-    assert names == {"buy_hold", "sma_crossover", "xgboost", "lstm"}
+    assert names == {"buy_hold", "sma_crossover", "xgboost", "lstm", "sma_ml_filter"}
     assert len(client.get("/api/cost-presets").json()["items"]) == 4
     assert "equity" in client.get("/api/splits").json()
     assert client.get("/api/symbols").json()["offline"] is True
@@ -26,6 +26,13 @@ def test_data_endpoints(client):
     assert all(v is not None for v in ind["series"]["sma_20"])  # warmed up on full history
     bad = client.get("/api/data/indicators", params={**SYN, "indicators": "foo"})
     assert bad.status_code == 422
+    ffd = client.get(
+        "/api/data/indicators", params={**SYN, "limit": 50, "indicators": "ffd:0.4"}
+    ).json()
+    assert all(v is not None for v in ffd["series"]["ffd_0.4"])
+    for spec in ("ffd:abc", "ffd:3"):
+        r = client.get("/api/data/indicators", params={**SYN, "indicators": spec})
+        assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
     missing = client.get("/api/data/ohlcv", params={"symbol": "NOPE"})
     assert missing.status_code == 404 and missing.json()["error"]["code"] == "DATA_UNAVAILABLE"
 
@@ -58,6 +65,16 @@ def test_ml_window_guard_and_in_sample_flag(client):
     ok = client.post("/api/backtest", json={**body, "window": "model_test"}).json()
     assert ok["in_sample"] is False and ok["diagnostics"]["n"] > 100
     assert "proba" in ok["series"]
+
+
+def test_sma_ml_filter_is_guarded_and_labelled(client):
+    params = {"fast": 10, "slow": 50, "model_id": "lstm_syn_1d_fh_v1"}
+    body = {**SYN, "window": "val", "strategy": {"name": "sma_ml_filter", "params": params}}
+    assert client.post("/api/backtest", json=body).status_code == 409
+    ok = client.post("/api/backtest", json={**body, "window": "model_test"}).json()
+    assert ok["in_sample"] is False and ok["model_ids"] == ["lstm_syn_1d_fh_v1"]
+    assert ok["strategy"]["label"] == "SMA 10/50 + LSTM filter"
+    assert ok["diagnostics"] is not None and "proba" in ok["series"]
 
 
 def test_compare_counts_test_evaluations(client):
@@ -139,6 +156,47 @@ def test_run_history_crud_and_export(client):
     )
     assert client.delete(f"/api/runs/{run_id}").status_code == 200
     assert client.get(f"/api/runs/{run_id}").status_code == 404
+
+
+def test_run_bundle_round_trip(client):
+    bt = client.post(
+        "/api/backtest", json={**SYN, "name": "bundled", "strategy": {"name": "buy_hold"}}
+    ).json()
+    cmp = client.post(
+        "/api/compare",
+        json={
+            **SYN,
+            "strategies": [{"name": "buy_hold"}, {"name": "sma_crossover"}],
+            "statistics": {"bootstrap_samples": 200},
+            "cost_levels": [],
+        },
+    ).json()
+    ids = f"{bt['run_id']},{cmp['run_id']}"
+    bundle = client.get("/api/runs/bundle", params={"ids": ids}).json()
+    assert bundle["format"] == "tokenedge.runs" and len(bundle["runs"]) == 2
+
+    # Same IDs already exist here, so a re-import is a no-op.
+    again = client.post("/api/runs/import", json=bundle).json()
+    assert again == {"imported": 0, "skipped": 2, "ids": []}
+
+    for run_id in (bt["run_id"], cmp["run_id"]):
+        client.delete(f"/api/runs/{run_id}")
+    res = client.post("/api/runs/import", json=bundle).json()
+    assert res["imported"] == 2 and set(res["ids"]) == {bt["run_id"], cmp["run_id"]}
+    restored = client.get(f"/api/runs/{cmp['run_id']}").json()
+    assert restored["metrics"] == cmp["metrics"] and restored["verdict"] == cmp["verdict"]
+    listing = client.get("/api/runs", params={"symbol": "SYN", "kind": "backtest"}).json()
+    item = next(i for i in listing["items"] if i["id"] == bt["run_id"])
+    assert item["name"] == "bundled" and item["metrics"]["buy_hold"]["sharpe"] is not None
+
+    # A single-run export imports too.
+    single = client.get(f"/api/runs/{bt['run_id']}/export", params={"format": "json"}).json()
+    client.delete(f"/api/runs/{bt['run_id']}")
+    assert client.post("/api/runs/import", json=single).json()["imported"] == 1
+
+    bad = client.post("/api/runs/import", json={"format": "tokenedge.runs", "runs": [{}]})
+    assert bad.status_code == 422 and bad.json()["error"]["code"] == "INVALID_BUNDLE"
+    assert client.post("/api/runs/import", content=b"not json").status_code == 422
 
 
 def test_reproducible_results(client):

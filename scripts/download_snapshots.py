@@ -1,4 +1,4 @@
-"""Download the default universe into data/snapshots/ (bundled offline demo data).
+"""Download the default universe into data/snapshots/ (bundled data for offline use).
 
 Usage:
     python scripts/download_snapshots.py               # all default instruments

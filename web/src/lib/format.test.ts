@@ -33,3 +33,15 @@ describe("colors", () => {
     expect(strategyColor("sma_crossover_2", "light")).not.toBe(strategyColor("sma_crossover", "light"));
   });
 });
+
+describe("share", () => {
+  it("round-trips a configuration through the URL parameter", async () => {
+    const { decodeConfig, encodeConfig } = await import("./share");
+    const cfg = { market: { symbol: "RELIANCE.NS", source: "yfinance" }, params: { fast: 20, note: "₹ & ü" } };
+    const param = encodeConfig(cfg);
+    expect(param).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(decodeConfig(param)).toEqual(cfg);
+    expect(decodeConfig("not-base64!")).toBeNull();
+    expect(decodeConfig(null)).toBeNull();
+  });
+});

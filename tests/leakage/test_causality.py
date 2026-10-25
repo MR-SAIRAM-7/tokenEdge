@@ -1,8 +1,8 @@
 """Look-ahead bias tests (FR-V1 to FR-V5).
 
 The future-perturbation check appends random bars after bar t and requires every value up to
-t to stay identical. A function that peeks at the future fails it, which the label test below
-demonstrates on purpose.
+t to stay identical. A function that peeks at the future fails it; the label test below
+checks that on purpose.
 """
 
 import pandas as pd
@@ -28,6 +28,11 @@ def test_features_are_causal_hourly(hourly):
     assert future_perturbation_check(lambda d: build_features(d, "v1", "1h"), hourly, 1500)
 
 
+@pytest.mark.parametrize("cut", CUTS)
+def test_frac_diff_features_are_causal(daily, cut):
+    assert future_perturbation_check(lambda d: build_features(d, "v2", "1d"), daily, cut)
+
+
 @pytest.mark.parametrize(
     "name,params",
     [
@@ -47,6 +52,20 @@ def test_classical_signals_are_causal(daily, name, params):
 )
 def test_ml_signals_are_causal(sandbox, daily, name, model_id):
     strat = get_strategy(name, {"model_id": model_id})
+    for cut in CUTS:
+        assert future_perturbation_check(strat.generate_signals, daily, cut)
+
+
+@pytest.mark.parametrize(
+    "name,params",
+    [
+        ("xgboost", {"model_id": "xgb_syn_1d_fh_v1", "sizing": "probability"}),
+        ("sma_ml_filter", {"fast": 10, "slow": 50, "model_id": "xgb_syn_1d_fh_v1"}),
+        ("sma_ml_filter", {"fast": 10, "slow": 50, "model_id": "lstm_syn_1d_fh_v1"}),
+    ],
+)
+def test_sized_and_filtered_signals_are_causal(sandbox, daily, name, params):
+    strat = get_strategy(name, params)
     for cut in CUTS:
         assert future_perturbation_check(strat.generate_signals, daily, cut)
 

@@ -1,10 +1,10 @@
-"""Train the demo XGBoost + LSTM models for one market (used by the GitHub Actions workflow).
+"""Train the XGBoost + LSTM models for one market (used by the "Train models" GitHub Actions workflow).
 
 Same pipeline as the Colab notebooks, with settings sized for a CPU runner. Uses the bundled
 snapshots (set TOKENEDGE_OFFLINE=1) so results are reproducible.
 
 Usage:
-    python scripts/train_demo_models.py SPY --source yfinance --interval 1d --out out/
+    python scripts/train_market.py SPY --source yfinance --interval 1d --out out/
 """
 
 from __future__ import annotations

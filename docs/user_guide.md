@@ -44,7 +44,7 @@ Open http://localhost:5173. Vite forwards `/api` calls to port 8000.
 
 ### Offline mode
 
-Set `TOKENEDGE_OFFLINE=1` before starting the server to use only the bundled snapshots in `data/snapshots/`. Nothing is downloaded. Use this for demos and vivas where Wi-Fi is unreliable.
+Set `TOKENEDGE_OFFLINE=1` before starting the server to use only the bundled snapshots in `data/snapshots/`. Nothing is downloaded. Use this for presentations and vivas where Wi-Fi is unreliable.
 
 ## 2. Using the web app
 
@@ -79,7 +79,7 @@ Models are trained in Colab, not on your laptop. The app only loads the exported
 3. Edit the configuration cell (`SYMBOL`, `SOURCE`, `INTERVAL`, ...), then Runtime → **Run all**. If Colab asks to restart after installing packages, restart and run all again.
 4. The last cell downloads `<model_id>.zip`. Unzip it into `models/` so you have `models/<model_id>/metadata.json`.
 5. Refresh the web app. The model appears on the Models page.
-6. Commit it so the deployed demo includes it:
+6. Commit it so the deployed app includes it:
 
 ```bash
 git add models/
@@ -99,7 +99,7 @@ The same pipeline is available from the command line for anyone with a GPU: `pyt
 python scripts/run_experiments.py
 ```
 
-E3 (labeling ablation) and E4 (look-ahead demonstration) train small models, so run them in Colab.
+E3 (labeling ablation) and E4 (look-ahead bias) train small models, so run them in Colab.
 
 ## 5. Tests
 

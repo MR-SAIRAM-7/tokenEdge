@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Toolt
 import { useFindings } from "../api/queries";
 import type { Finding } from "../api/types";
 import { Legend } from "../components/charts/TimeSeriesChart";
-import { DemoProgress, DemoSeedCard, useDemoSeed } from "../components/DemoSeed";
+import { StudyCard, StudyProgress, useStudy } from "../components/StudyRunner";
 import { Badge, Button, Card, CardHeader, PageHeader, Skeleton, StatTile } from "../components/ui";
 import { CHROME, divergingColor, strategyColor, textOn } from "../lib/colors";
 import { downloadCsv } from "../lib/download";
@@ -14,7 +14,7 @@ import { date, num, pct } from "../lib/format";
 import { useTheme } from "../state/theme";
 
 export const STRATEGY_ORDER = ["buy_hold", "sma_crossover", "xgboost", "lstm"] as const;
-export const STRATEGY_NAMES: Record<string, string> = { buy_hold: "Buy & Hold", sma_crossover: "SMA (tuned)", xgboost: "XGBoost", lstm: "LSTM" };
+export const STRATEGY_NAMES: Record<string, string> = { buy_hold: "Buy & Hold", sma_crossover: "SMA (tuned)", xgboost: "XGBoost", lstm: "LSTM", sma_ml_filter: "SMA + ML filter" };
 
 const market = (f: Finding) => `${f.symbol} · ${f.interval}`;
 
@@ -182,7 +182,7 @@ function GroupedBars({ items, metric, format }: { items: Finding[]; metric: "sha
 
 export default function Findings() {
   const { data: items, isLoading } = useFindings();
-  const { running, status, start } = useDemoSeed();
+  const { running, status, start } = useStudy();
   const notes = useMemo(() => takeaways(items ?? []), [items]);
 
   const stats = useMemo(() => {
@@ -237,8 +237,8 @@ export default function Findings() {
         actions={
           items?.length ? (
             <>
-              <Button icon={<RefreshCw className="size-4" />} loading={running} onClick={() => start(true)} title="Re-run every demo scenario">
-                Re-run demo
+              <Button icon={<RefreshCw className="size-4" />} loading={running} onClick={() => start(true)} title="Re-run every scenario of the research study">
+                Re-run study
               </Button>
               <Button icon={<Download className="size-4" />} onClick={exportCsv}>
                 CSV
@@ -249,14 +249,14 @@ export default function Findings() {
       />
       {running && items?.length ? (
         <Card className="p-4">
-          <DemoProgress status={status} />
+          <StudyProgress status={status} />
         </Card>
       ) : null}
 
       {isLoading && <Skeleton className="h-80" />}
       {items && items.length === 0 && (
         <Card>
-          <DemoSeedCard />
+          <StudyCard />
         </Card>
       )}
 

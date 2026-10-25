@@ -82,6 +82,36 @@ def volume_zscore(volume: pd.Series, window: int = 20) -> pd.Series:
     return (volume - mean) / std.replace(0.0, np.nan)
 
 
+def frac_diff_weights(d: float, threshold: float = 1e-4, max_size: int = 10_000) -> np.ndarray:
+    """Weights w_0, w_1, ... of the fractional difference operator (1 - B)^d, newest first.
+
+    w_0 = 1 and w_k = -w_{k-1} (d - k + 1) / k; the series is cut once |w_k| < threshold.
+    """
+    w = [1.0]
+    for k in range(1, max_size):
+        nxt = -w[-1] * (d - k + 1) / k
+        if abs(nxt) < threshold:
+            break
+        w.append(nxt)
+    return np.array(w)
+
+
+def frac_diff(series: pd.Series, d: float = 0.4, threshold: float = 1e-4) -> pd.Series:
+    """Fixed-width-window fractional differentiation (FFD, AFML Ch. 5).
+
+    The value at bar t is sum_k w_k * x[t - k] over the last len(w) bars, so it is causal. d = 0
+    returns the series and d = 1 the first difference; in between the result is close to
+    stationary but keeps long memory of the price level. The first len(w) - 1 values are NaN.
+    """
+    w = frac_diff_weights(d, threshold)
+    x = series.to_numpy("float64")
+    out = np.full(len(x), np.nan)
+    if len(x) >= len(w):
+        windows = np.lib.stride_tricks.sliding_window_view(x, len(w))  # rows: x[t-l+1 .. t]
+        out[len(w) - 1 :] = windows @ w[::-1]
+    return pd.Series(out, index=series.index)
+
+
 INDICATORS = {
     "sma": "Simple moving average (window)",
     "ema": "Exponential moving average (span)",
@@ -89,30 +119,40 @@ INDICATORS = {
     "rsi": "Relative Strength Index (window)",
     "macd": "MACD (12, 26, 9)",
     "atr": "Average True Range (window)",
+    "ffd": "Fractionally differentiated log price (order d, default 0.4)",
 }
 
 
 def compute_indicator(
-    df: pd.DataFrame, name: str, window: int | None = None
+    df: pd.DataFrame, name: str, window: float | None = None
 ) -> dict[str, pd.Series]:
-    """Indicator series for charting, keyed by output name."""
+    """Indicator series for charting, keyed by output name.
+
+    ``window`` is the indicator's parameter: a bar count, or the order d for ``ffd``.
+    """
     close = df["close"]
+    if name == "ffd":
+        d = 0.4 if window is None else float(window)
+        if not 0.0 <= d <= 2.0:
+            raise ValueError("The differencing order d for 'ffd' must be between 0 and 2.")
+        return {f"ffd_{d:g}": frac_diff(np.log(close), d)}
+    w = None if window is None else int(window)
     if name == "sma":
-        w = window or 20
+        w = w or 20
         return {f"sma_{w}": sma(close, w)}
     if name == "ema":
-        w = window or 20
+        w = w or 20
         return {f"ema_{w}": ema(close, w)}
     if name == "bb":
-        bands = bollinger(close, window or 20)
+        bands = bollinger(close, w or 20)
         return {"bb_upper": bands["upper"], "bb_mid": bands["mid"], "bb_lower": bands["lower"]}
     if name == "rsi":
-        w = window or 14
+        w = w or 14
         return {f"rsi_{w}": rsi(close, w)}
     if name == "macd":
         m = macd(close)
         return {"macd": m["macd"], "macd_signal": m["signal"], "macd_hist": m["hist"]}
     if name == "atr":
-        w = window or 14
+        w = w or 14
         return {f"atr_{w}": atr(df["high"], df["low"], close, w)}
     raise ValueError(f"Unknown indicator '{name}'. Available: {sorted(INDICATORS)}")

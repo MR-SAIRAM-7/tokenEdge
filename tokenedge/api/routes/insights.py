@@ -1,4 +1,4 @@
-"""Presentation-oriented endpoints: market overview, research findings, demo seeding."""
+"""Overview endpoints: market overview, research findings and the research study runner."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter
 
-from tokenedge import demo
+from tokenedge import study
 from tokenedge.api import db
 from tokenedge.config import DEFAULT_UNIVERSE, get_settings, periods_per_year
 from tokenedge.data.cache import cache_file, snapshot_file
@@ -125,11 +125,11 @@ def findings() -> dict:
     return {"items": out}
 
 
-@router.get("/demo/status")
-def demo_status() -> dict:
-    return {**demo.STATUS.as_dict(), "has_runs": demo.has_runs()}
+@router.get("/study/status")
+def study_status() -> dict:
+    return {**study.STATUS.as_dict(), "has_runs": study.has_runs()}
 
 
-@router.post("/demo/seed")
-def demo_seed(replace: bool = False) -> dict:
-    return demo.seed_in_background(replace=replace)
+@router.post("/study/run")
+def run_study(replace: bool = False) -> dict:
+    return study.run_in_background(replace=replace)

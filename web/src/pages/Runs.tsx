@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, History, Pencil, Search, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Download, FileJson, History, Pencil, Search, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../api/client";
 import { useRuns } from "../api/queries";
-import { DemoSeedCard } from "../components/DemoSeed";
+import { StudyCard } from "../components/StudyRunner";
 import { useToast } from "../components/Toast";
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Segmented, Skeleton } from "../components/ui";
 import { date, dateTimeLocal, num } from "../lib/format";
@@ -30,6 +30,23 @@ export default function Runs() {
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
+  const fileInput = useRef<HTMLInputElement>(null);
+  const importRuns = useMutation({
+    mutationFn: async (file: File) => {
+      let body: unknown;
+      try {
+        body = JSON.parse(await file.text());
+      } catch {
+        throw new Error(`${file.name} is not a JSON file.`);
+      }
+      return api.post<{ imported: number; skipped: number }>("/runs/import", body);
+    },
+    onSuccess: (r) => {
+      toast(`Imported ${r.imported} run${r.imported === 1 ? "" : "s"}${r.skipped ? `; ${r.skipped} already in the history` : ""}.`, "ok");
+      ["runs", "findings"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    },
+    onError: (e: Error) => toast(e.message, "error"),
+  });
   const rename = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => api.patch(`/runs/${id}`, { name }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["runs"] }),
@@ -45,6 +62,29 @@ export default function Runs() {
         eyebrow="Records"
         title="Run History"
         subtitle="Every backtest and comparison is stored with its full configuration, data hash and code version, so results can be reopened exactly."
+        actions={
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importRuns.mutate(file);
+                e.target.value = "";
+              }}
+            />
+            <Button icon={<Upload className="size-4" />} loading={importRuns.isPending} onClick={() => fileInput.current?.click()} title="Import runs from a TokenEdge JSON export">
+              Import
+            </Button>
+            {!!data?.total && (
+              <a href={api.url("/runs/bundle")} title="Download every run as one JSON file that can be imported elsewhere">
+                <Button icon={<FileJson className="size-4" />}>Export all</Button>
+              </a>
+            )}
+          </>
+        }
       />
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
@@ -66,7 +106,7 @@ export default function Runs() {
         </div>
         {isLoading && <Skeleton className="m-4 h-40" />}
         {error && <EmptyState title="Could not load runs">{(error as Error).message}</EmptyState>}
-        {data && data.total === 0 && <DemoSeedCard />}
+        {data && data.total === 0 && <StudyCard />}
         {data && data.total > 0 && items.length === 0 && <EmptyState title="No runs match">Try a different search or filter.</EmptyState>}
         {data && items.length > 0 && (
           <div className="overflow-x-auto">
@@ -119,8 +159,11 @@ export default function Runs() {
                               if (name !== null) rename.mutate({ id: r.id, name: name.trim() });
                             }}
                           />
-                          <a href={api.url(`/runs/${r.id}/export`, { format: "csv" })} title="Export CSV">
+                          <a href={api.url(`/runs/${r.id}/export`, { format: "csv" })} title="Export CSV (zip)">
                             <Button size="sm" variant="ghost" icon={<Download className="size-3.5" />} />
+                          </a>
+                          <a href={api.url(`/runs/${r.id}/export`, { format: "json" })} title="Export JSON (can be imported)">
+                            <Button size="sm" variant="ghost" icon={<FileJson className="size-3.5" />} />
                           </a>
                           <Button
                             size="sm"

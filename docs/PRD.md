@@ -100,7 +100,7 @@ There is no simple, transparent, student-friendly tool that puts a classical str
 | G3 | Train XGBoost and LSTM models for short-horizon price-movement prediction and use them as strategies. | Objective 3 |
 | G4 | Compare risk-adjusted returns (Sharpe, max drawdown and others) on held-out data. | Objective 4 |
 | G5 | Enforce strict train/test separation and prevent look-ahead bias, verified by automated tests. | Abstract |
-| G6 | Provide a web UI that makes the research interactive and demo-ready. | Project requirement |
+| G6 | Provide a web UI that makes the research interactive and presentation-ready. | Project requirement |
 | G7 | Make every result reproducible: same config, data snapshot and model give the same numbers. | Research quality |
 
 ### 3.2 Non-goals
@@ -119,7 +119,7 @@ There is no simple, transparent, student-friendly tool that puts a classical str
 | Persona | Description | Primary needs |
 |---|---|---|
 | **Student researcher** (primary) | Final-year engineering student who builds and runs experiments. | Configure strategies and costs, run backtests quickly, compare results, export tables and charts for the report. |
-| **Faculty evaluator** | Project guide or external examiner at reviews and the viva. | Understand the methodology at a glance, see live demos, trust that results are leakage-free. |
+| **Faculty evaluator** | Project guide or external examiner at reviews and the viva. | Understand the methodology at a glance, see the system run live, trust that results are leakage-free. |
 | **Hobbyist quant / learner** | Anyone who clones the repo from GitHub. | Run locally with one command, learn backtesting pitfalls, extend with new strategies. |
 
 ---
@@ -129,7 +129,7 @@ There is no simple, transparent, student-friendly tool that puts a classical str
 ### 5.1 MVP (must have)
 
 - Data download and caching from **yfinance** (equities, ETFs, indices) and **ccxt** (crypto spot OHLCV).
-- Bundled **offline snapshot datasets** so the demo works without internet or when Yahoo rate-limits.
+- Bundled **offline snapshot datasets** so the app works without internet or when Yahoo rate-limits.
 - Data-quality checks: gaps, duplicates, NaNs, zero volume, outlier returns.
 - A library of technical indicators: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling volatility.
 - Labeling: fixed-horizon and **triple-barrier**.
@@ -157,7 +157,7 @@ There is no simple, transparent, student-friendly tool that puts a classical str
 - Fractionally differentiated price features (AFML Ch. 5).
 - Meta-labeling: the ML model filters signals from the SMA strategy.
 - Feature importance views (gain or SHAP).
-- An educational "look-ahead demo" that runs a deliberately leaky model to show how bias inflates results.
+- An educational look-ahead bias experiment that runs a deliberately leaky model to show how bias inflates results.
 - Multi-asset portfolio backtests.
 
 ### 5.3 Out of scope
@@ -361,7 +361,7 @@ See §13 for the page specification. Summary:
 | NFR-8 | Portability | Runs on Windows, macOS and Linux with Python ≥ 3.11 and Node ≥ 20. Runs anywhere with `docker run`. |
 | NFR-9 | Security | No secrets required (public data endpoints). All inputs validated with Pydantic. CORS restricted to configured origins. Request size limits. No arbitrary code execution from user input. |
 | NFR-10 | Maintainability | Type hints throughout, `ruff` lint and format, `mypy` on the core package, docstrings on public APIs, modular strategy plugins. |
-| NFR-11 | Availability | Offline mode with bundled snapshots, so the demo never depends on Yahoo or exchange uptime. |
+| NFR-11 | Availability | Offline mode with bundled snapshots, so the app never depends on Yahoo or exchange uptime. |
 | NFR-12 | Compliance | A visible disclaimer in the UI footer and README: educational use only, not financial advice. |
 
 ---
@@ -471,7 +471,7 @@ sequenceDiagram
 data_cache/                 # git-ignored, created at runtime
   yfinance/SPY_1d.parquet
   ccxt_binance/BTC-USDT_1h.parquet
-data/snapshots/             # committed, offline demo data
+data/snapshots/             # committed, offline datasets
   SPY_1d.parquet
   BTC-USDT_1h.parquet
 models/                     # committed (small) model artifacts
@@ -607,7 +607,7 @@ The test windows contain different market regimes: the 2023–24 equity recovery
 | E1 | **Main comparison**: Buy & Hold vs SMA vs XGBoost vs LSTM on the test window for SPY, AAPL, RELIANCE.NS, BTC/USDT, ETH/USDT | Does ML beat the classical baseline after costs? | Metrics table, equity curves, PSR/DSR, bootstrap CI |
 | E2 | **Cost sensitivity** at 0, 5, 10, 20, 50 bps per side | At what cost level does each strategy's edge disappear? | Sharpe vs cost chart, break-even cost |
 | E3 | **Labeling ablation**: fixed-horizon vs triple-barrier | Does triple-barrier labeling improve trading performance? | Paired metrics |
-| E4 | **Look-ahead demonstration**: same XGBoost with (a) random K-fold and (b) a scaler fitted on all data | How much does leakage inflate backtest results? | Leaky vs clean Sharpe (educational) |
+| E4 | **Look-ahead bias experiment**: same XGBoost with (a) random K-fold and (b) a scaler fitted on all data | How much does leakage inflate backtest results? | Leaky vs clean Sharpe (educational) |
 | E5 | **Overfitting check**: DSR using the real trial counts | Does the best strategy survive multiple-testing correction? | DSR values |
 | E6 | **Accuracy vs profitability**: classification metrics against Sharpe | Does a higher AUC mean a higher Sharpe? | Scatter/table |
 
@@ -862,8 +862,8 @@ tokenEdge/
 | Environment | Purpose | How |
 |---|---|---|
 | Local development | Day-to-day coding | `uvicorn tokenedge.api.main:app --reload` + `npm run dev` (Vite proxies `/api` to port 8000). |
-| Local Docker | Demo / viva on a laptop, offline-capable | `docker compose up` → http://localhost:8000 |
-| Cloud (public demo) | Shareable link for evaluators | **Render** free web service via the `render.yaml` Blueprint (primary). **Hugging Face Spaces** (Docker SDK) as an alternative; it needs Git LFS for the binary snapshot and model files. |
+| Local Docker | Presentation / viva on a laptop, offline-capable | `docker compose up` → http://localhost:8000 |
+| Cloud (public deployment) | Shareable link for evaluators | **Render** free web service via the `render.yaml` Blueprint (primary). **Hugging Face Spaces** (Docker SDK) as an alternative; it needs Git LFS for the binary snapshot and model files. |
 | Training | Model training | Google Colab (GPU runtime) using the notebooks in `notebooks/`. |
 
 ### 16.2 Docker (multi-stage)
@@ -929,8 +929,8 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 | 3. ML pipeline | 5–7 | Labels, feature set v1, splits/purge/embargo, PurgedKFold, XGBoost + LSTM training, ONNX export, registry, ML strategies | **M3**: Colab notebooks produce artifacts. The app loads them and backtests on the test window. Leakage tests pass. |
 | 4. Evaluation suite | 7–8 | PSR/DSR, bootstrap, cost sensitivity, verdict, test-set lock | **M4**: full comparison runs end-to-end from Python. |
 | 5. API + Web UI | 8–11 | FastAPI routes, SQLite run history, React pages and charts | **M5**: all 7 pages working against the live API. |
-| 6. Hardening + deploy | 11–12 | Coverage, error handling, Docker, cloud deploy, offline mode | **M6**: public demo URL live. `docker compose up` works offline. |
-| 7. Experiments + documentation | 13–14 | Run E1–E6, final report, slides, demo video, user guide | **M7**: final submission package. |
+| 6. Hardening + deploy | 11–12 | Coverage, error handling, Docker, cloud deploy, offline mode | **M6**: public deployment URL live. `docker compose up` works offline. |
+| 7. Experiments + documentation | 13–14 | Run E1–E6, final report, slides, walkthrough video, user guide | **M7**: final submission package. |
 
 ---
 
@@ -945,7 +945,7 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 | R5 | Overfitting during hyperparameter search | Medium | High | Purged CV, trial counting, DSR, test set touched once. |
 | R6 | Backtrader is unmaintained and breaks on new Python or matplotlib versions | Medium | Low | Used only for the optional cross-check, without plotting. Pin versions. The core engine has no dependency on it. |
 | R7 | Colab session limits interrupt training | Medium | Low | Models are small (minutes to train). Checkpoint to Google Drive. |
-| R8 | Free hosting sleeps or has low memory | Medium | Medium | ONNX-only runtime (no torch) fits Render's free 512 MB. Open the site a few minutes before a review. Local Docker as the demo fallback. |
+| R8 | Free hosting sleeps or has low memory | Medium | Medium | ONNX-only runtime (no torch) fits Render's free 512 MB. Open the site a few minutes before a review. Local Docker as the fallback. |
 | R9 | Python 3.14 wheel availability for some libraries on the developer laptop | Low | Medium | Target Python 3.11/3.12 in Docker and CI. Use a virtual environment. |
 | R10 | Scope creep (too many stretch features) | Medium | Medium | MoSCoW priorities. Stretch items start only after M5. |
 
@@ -955,12 +955,12 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 
 ### 19.1 Acceptance criteria
 
-1. All **Must** requirements implemented and demonstrable in the web UI.
+1. All **Must** requirements implemented and usable in the web UI.
 2. The leakage test suite passes in CI. The window guard blocks in-sample ML backtests by default.
 3. The engine matches Backtrader on the SMA cross-check (same trades, total return within 0.5 pp).
 4. A comparison on at least 3 equities and 2 crypto pairs is produced on held-out data, with Sharpe, Sortino, max drawdown, Calmar, PSR, DSR and a bootstrap CI.
 5. Cost sensitivity shows each strategy's break-even cost level.
-6. The public demo URL works, and `docker compose up` works offline.
+6. The public deployment URL works, and `docker compose up` works offline.
 7. The documentation is complete: PRD, README, user guide, report, slides.
 
 ### 19.2 Traceability matrix
@@ -981,9 +981,9 @@ The plan assumes a 14-week build and is adjustable to the college calendar.
 2. This PRD plus architecture notes and a user guide in `docs/`.
 3. Trained model artifacts in `models/` and the Colab notebooks that reproduce them.
 4. Experiment results (E1–E6): tables (CSV) and figures (PNG) in `docs/results/`.
-5. Live demo URL and a Docker image.
+5. Live deployment URL and a Docker image.
 6. Final project report (problem, literature review, methodology, implementation, results, conclusion).
-7. Presentation slides and a 3–5 minute demo video.
+7. Presentation slides and a 3–5 minute walkthrough video.
 
 ---
 
@@ -1139,7 +1139,7 @@ Status of v0.1 (25 October 2026).
 | FR-S6 minimum holding period, FR-S7 schema-driven parameter forms | Implemented |
 | FR-X9 classification diagnostics, FR-X10 verdict generator | Implemented |
 | FR-V6 test-set lock counter | Implemented (shown on model cards) |
-| Feature importance view, look-ahead demonstration (E4) | Implemented |
+| Feature importance view, look-ahead bias experiment (E4) | Implemented |
 | NFR-6 coverage ≥ 85% on core modules | Met (about 91% overall; engine, metrics, labeling and validation 89–100%) |
 | Trained models in `models/` (FR-M8) | Pending: train in Colab with notebooks 01 and 02, then commit the folders |
 | FR-R3 run bundle import, FR-M11 walk-forward predictions | Not yet implemented |

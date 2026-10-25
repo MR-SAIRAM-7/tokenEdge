@@ -60,7 +60,18 @@ def build_features_v1(df: pd.DataFrame, interval: str = "1d") -> pd.DataFrame:
     return out.replace([np.inf, -np.inf], np.nan)
 
 
-FEATURE_SETS = {"v1": build_features_v1}
+FFD_ORDER = 0.4
+
+
+def build_features_v2(df: pd.DataFrame, interval: str = "1d") -> pd.DataFrame:
+    """v1 plus the fractionally differentiated log price (AFML Ch. 5), which keeps memory of
+    the price level while staying close to stationary. Its warm-up is longer (~280 bars)."""
+    out = build_features_v1(df, interval)
+    out["ffd_log_close"] = ind.frac_diff(np.log(df["close"]), FFD_ORDER)
+    return out
+
+
+FEATURE_SETS = {"v1": build_features_v1, "v2": build_features_v2}
 
 
 def build_features(df: pd.DataFrame, feature_set: str = "v1", interval: str = "1d") -> pd.DataFrame:

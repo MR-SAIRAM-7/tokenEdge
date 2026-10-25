@@ -75,15 +75,21 @@ def indicators(
     end: str | None = None,
     limit: int | None = Query(None, ge=10, le=200_000),
     names: str = Query(
-        "sma:20,sma:50", alias="indicators", description="Comma list, e.g. sma:20,bb:20,rsi:14,macd"
+        "sma:20,sma:50",
+        alias="indicators",
+        description="Comma list, e.g. sma:20,bb:20,rsi:14,macd,ffd:0.4",
     ),
 ) -> dict:
     full = get_ohlcv(symbol, source, interval)  # compute on full history so values are warmed up
     out: dict[str, pd.Series] = {}
     for item in [x.strip() for x in names.split(",") if x.strip()]:
-        name, _, window = item.partition(":")
+        name, _, param = item.partition(":")
         try:
-            out.update(compute_indicator(full, name.lower(), int(window) if window else None))
+            value = float(param) if param else None
+        except ValueError as exc:
+            raise ConfigError(f"Indicator '{item}': the parameter must be a number.") from exc
+        try:
+            out.update(compute_indicator(full, name.lower(), value))
         except ValueError as exc:
             raise ConfigError(str(exc)) from exc
     window_df = _load(symbol, source, interval, start, end, limit)

@@ -1,9 +1,14 @@
-name: Train demo models
+name: Train models
 
 # Trains XGBoost + LSTM models on the bundled snapshots in the cloud (not on a laptop).
-# Download the "demo-models" artifact and unzip its folders into models/.
+# Download the "trained-models" artifact and unzip its folders into models/.
 on:
   workflow_dispatch:
+    inputs:
+      only:
+        description: "Space-separated slugs to train (e.g. 'eth'); empty trains every market"
+        required: false
+        default: ""
 
 jobs:
   train:
@@ -19,23 +24,31 @@ jobs:
           - { symbol: "RELIANCE.NS", source: "yfinance", interval: "1d", slug: "reliance" }
           - { symbol: "TCS.NS", source: "yfinance", interval: "1d", slug: "tcs" }
           - { symbol: "BTC/USDT", source: "ccxt", interval: "1h", slug: "btc" }
+          - { symbol: "ETH/USDT", source: "ccxt", interval: "1h", slug: "eth" }
+    env:
+      SELECTED: ${{ inputs.only == '' || contains(format(' {0} ', inputs.only), format(' {0} ', matrix.slug)) }}
     steps:
       - uses: actions/checkout@v4
+        if: env.SELECTED == 'true'
       - uses: actions/setup-python@v5
+        if: env.SELECTED == 'true'
         with:
           python-version: "3.11"
           cache: pip
       - name: Install (CPU PyTorch for training only)
+        if: env.SELECTED == 'true'
         run: |
           pip install -r requirements.txt
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install onnx onnxscript
           pip install -e . --no-deps
       - name: Train
+        if: env.SELECTED == 'true'
         env:
           TOKENEDGE_OFFLINE: "1"
-        run: python scripts/train_demo_models.py "${{ matrix.symbol }}" --source ${{ matrix.source }} --interval ${{ matrix.interval }} --out out
+        run: python scripts/train_market.py "${{ matrix.symbol }}" --source ${{ matrix.source }} --interval ${{ matrix.interval }} --out out
       - uses: actions/upload-artifact@v4
+        if: env.SELECTED == 'true'
         with:
           name: model-${{ matrix.slug }}
           path: out/
@@ -54,6 +67,6 @@ jobs:
       - run: ls -la models && du -sh models
       - uses: actions/upload-artifact@v4
         with:
-          name: demo-models
+          name: trained-models
           path: models/
           retention-days: 30

@@ -413,7 +413,7 @@ export interface Finding {
   verdict: string;
 }
 
-export interface DemoStatus {
+export interface StudyStatus {
   state: "idle" | "running" | "done" | "error";
   done: number;
   total: number;

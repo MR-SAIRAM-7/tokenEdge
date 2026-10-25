@@ -8,7 +8,7 @@ TokenEdge ships as a single Docker image. A multi-stage build compiles the React
 docker compose up --build
 ```
 
-Open http://localhost:8000. `./models` is mounted read-only, so new model folders show up without a rebuild. Run history and the data cache are kept in the `tokenedge-var` volume. For a fully offline demo, set `TOKENEDGE_OFFLINE: "1"` in `docker-compose.yml`.
+Open http://localhost:8000. `./models` is mounted read-only, so new model folders show up without a rebuild. Run history and the data cache are kept in the `tokenedge-var` volume. To run fully offline, set `TOKENEDGE_OFFLINE: "1"` in `docker-compose.yml`.
 
 ## 2. Render (recommended free hosting)
 
@@ -70,7 +70,7 @@ app_port: 8000
 
 ## 6. Refreshing the bundled data
 
-Before a release or demo, update the snapshots and commit them:
+Before a release, update the snapshots and commit them:
 
 ```bash
 python scripts/download_snapshots.py

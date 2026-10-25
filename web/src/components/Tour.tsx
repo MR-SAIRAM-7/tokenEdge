@@ -19,7 +19,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Pick a market",
-    body: "Every page follows this selector. Nine markets are bundled (US and Indian equities, Bitcoin, Ether, Solana), so the demo works offline. You can also type any Yahoo ticker or crypto pair.",
+    body: "Every page follows this selector. Nine markets are bundled (US and Indian equities, Bitcoin, Ether, Solana), so the app works offline. You can also type any Yahoo ticker or crypto pair.",
     route: "/",
     target: '[data-tour="market"]',
   },
@@ -58,7 +58,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Models",
-    body: "XGBoost and LSTM models are trained in the cloud, never on the demo laptop. Each card shows the training, validation and held-out windows. Backtests on training data are blocked by default.",
+    body: "XGBoost and LSTM models are trained in the cloud, never inside the app. Each card shows the training, validation and held-out windows. Backtests on training data are blocked by default.",
     route: "/models",
     target: '[data-tour="models"]',
   },

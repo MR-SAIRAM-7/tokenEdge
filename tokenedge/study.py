@@ -1,8 +1,8 @@
-"""Demo content for presentations: a curated set of comparisons and backtests.
+"""The research study: a fixed set of comparisons and backtests behind the reported findings.
 
-Every demo run is a real run of the engine on the bundled market data and the registered
-models. Seeding just executes the scenarios below and saves them to the run history, so the
-dashboard, findings page and run history are populated before a review.
+Every study run is an ordinary run of the engine on the bundled market data and the registered
+models. Running the study executes the scenarios below and saves them to the run history, which
+feeds the dashboard, the findings scoreboard and Run History.
 """
 
 from __future__ import annotations
@@ -23,17 +23,18 @@ from tokenedge.ml.registry import get_registry
 
 log = logging.getLogger(__name__)
 
-DEMO_MARKETS: list[tuple[str, str, str]] = [
+STUDY_MARKETS: list[tuple[str, str, str]] = [
     ("SPY", "yfinance", "1d"),
     ("AAPL", "yfinance", "1d"),
     ("RELIANCE.NS", "yfinance", "1d"),
     ("TCS.NS", "yfinance", "1d"),
     ("BTC/USDT", "ccxt", "1h"),
+    ("ETH/USDT", "ccxt", "1h"),
 ]
 
 
 @dataclass
-class SeedStatus:
+class StudyStatus:
     state: str = "idle"  # idle | running | done | error
     done: int = 0
     total: int = 0
@@ -50,7 +51,7 @@ class SeedStatus:
         }
 
 
-STATUS = SeedStatus()
+STATUS = StudyStatus()
 _lock = threading.Lock()
 
 
@@ -67,7 +68,7 @@ def _scenarios() -> list[tuple[str, object]]:
     from tokenedge.api import services
 
     items: list[tuple[str, object]] = []
-    for symbol, source, interval in DEMO_MARKETS:
+    for symbol, source, interval in STUDY_MARKETS:
         models = _models_for(symbol, interval)
 
         def compare_request(symbol=symbol, source=source, interval=interval, models=models):
@@ -163,6 +164,34 @@ def _scenarios() -> list[tuple[str, object]]:
         )
         items.append(
             (
+                "Backtest · SPY XGBoost bet sizing",
+                backtest(
+                    "SPY XGBoost with probability bet sizing",
+                    "SPY",
+                    "yfinance",
+                    "1d",
+                    "xgboost",
+                    {"model_id": spy_models["xgboost"], "sizing": "probability"},
+                    window="model_test",
+                ),
+            )
+        )
+        items.append(
+            (
+                "Backtest · SPY SMA + XGBoost filter",
+                backtest(
+                    "SPY SMA 20/50 filtered by XGBoost",
+                    "SPY",
+                    "yfinance",
+                    "1d",
+                    "sma_ml_filter",
+                    {"fast": 20, "slow": 50, "model_id": spy_models["xgboost"]},
+                    window="model_test",
+                ),
+            )
+        )
+        items.append(
+            (
                 "Backtest · SPY XGBoost in-sample",
                 backtest(
                     "SPY XGBoost on validation data (in-sample, for contrast)",
@@ -210,8 +239,8 @@ def _scenarios() -> list[tuple[str, object]]:
     return items
 
 
-def seed_demo(replace: bool = False) -> dict:
-    """Run every demo scenario synchronously and store the results."""
+def run_study(replace: bool = False) -> dict:
+    """Run every study scenario synchronously and store the results."""
     from tokenedge.api import services
 
     with _lock:
@@ -221,7 +250,7 @@ def seed_demo(replace: bool = False) -> dict:
     try:
         scenarios = _scenarios()
         if replace:
-            names = demo_run_names()
+            names = study_run_names()
             for run in db.list_runs(limit=10_000)["items"]:
                 if run.get("name") in names:
                     db.delete_run(run["id"])
@@ -235,7 +264,7 @@ def seed_demo(replace: bool = False) -> dict:
                 else:
                     services.backtest(req)  # type: ignore[arg-type]
             except Exception as exc:  # keep going; report what failed
-                log.warning("Demo scenario %s failed: %s", label, exc)
+                log.warning("Study scenario %s failed: %s", label, exc)
                 STATUS.errors.append(f"{label}: {exc}")
             STATUS.done += 1
         STATUS.state = "done"
@@ -246,14 +275,16 @@ def seed_demo(replace: bool = False) -> dict:
     return STATUS.as_dict()
 
 
-def demo_run_names() -> set[str]:
-    """Names given to demo runs; only these are replaced when the demo is re-run."""
-    names = {f"{symbol}: classical vs ML on held-out data" for symbol, _, _ in DEMO_MARKETS}
+def study_run_names() -> set[str]:
+    """Names given to study runs; only these are replaced when the study is re-run."""
+    names = {f"{symbol}: classical vs ML on held-out data" for symbol, _, _ in STUDY_MARKETS}
     names |= {
         "SPY golden cross (SMA 50/200)",
         "BTC/USDT hourly EMA 24/168",
         "TCS.NS SMA 20/100 long/short, NSE costs",
         "SPY XGBoost on its held-out window",
+        "SPY XGBoost with probability bet sizing",
+        "SPY SMA 20/50 filtered by XGBoost",
         "SPY XGBoost on validation data (in-sample, for contrast)",
         "SPY LSTM on its held-out window",
         "RELIANCE.NS XGBoost with NSE costs",
@@ -261,9 +292,9 @@ def demo_run_names() -> set[str]:
     return names
 
 
-def seed_in_background(replace: bool = False) -> dict:
+def run_in_background(replace: bool = False) -> dict:
     if STATUS.state != "running":
-        threading.Thread(target=seed_demo, kwargs={"replace": replace}, daemon=True).start()
+        threading.Thread(target=run_study, kwargs={"replace": replace}, daemon=True).start()
         STATUS.state = "running"
     return STATUS.as_dict()
 

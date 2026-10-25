@@ -1,7 +1,8 @@
-"""Experiments E1-E6 from the PRD (section 11.3), used by notebooks/03_experiments.ipynb.
+"""Experiments E1-E7 from the PRD (section 11.3), used by notebooks/03_experiments.ipynb and
+scripts/run_experiments.py.
 
-E1/E2/E5/E6 only evaluate existing models and run anywhere. E3 and E4 train small XGBoost
-models and are meant for Colab.
+E1/E2/E5/E6/E7 only evaluate existing models and run anywhere. E3 and E4 train small XGBoost
+models and run in Colab or the "Experiments" GitHub Actions workflow.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from tokenedge.data.loader import get_ohlcv, slice_window, to_utc
 from tokenedge.engine.backtester import BacktestResult, run_backtest
 from tokenedge.engine.costs import ExecutionConfig, execution_from_preset
 from tokenedge.labeling import make_labels
-from tokenedge.metrics.performance import compute_metrics
+from tokenedge.metrics.performance import compute_metrics, finite, sharpe_ratio
 from tokenedge.metrics.report import compare_strategies, cost_sensitivity
 from tokenedge.ml.datasets import build_dataset
 from tokenedge.ml.evaluation import classification_report
@@ -39,6 +40,7 @@ DEFAULT_MARKETS: list[MarketSpec] = [
     ("SPY", "yfinance", "1d"),
     ("AAPL", "yfinance", "1d"),
     ("RELIANCE.NS", "yfinance", "1d"),
+    ("TCS.NS", "yfinance", "1d"),
     ("BTC/USDT", "ccxt", "1h"),
     ("ETH/USDT", "ccxt", "1h"),
 ]
@@ -179,6 +181,59 @@ def e2_cost_sensitivity(
     return pd.DataFrame(rows)
 
 
+def e7_extensions(runs: list[MarketRun], rf_annual: float = DEFAULT_RISK_FREE_RATE) -> pd.DataFrame:
+    """E7 (extensions): each model used as a filter on the tuned SMA, and with probability
+    bet sizing, next to the SMA and the all-in model on the same window and costs."""
+    rows = []
+    for run in runs:
+        symbol, _, interval = run.market
+        ppy = next(iter(run.results.values())).periods_per_year
+        sma = {k: run.report["sma_params"][k] for k in ("fast", "slow", "ma_type")}
+        variants: dict[str, tuple[str, BacktestResult]] = {
+            "sma_crossover": ("SMA (tuned)", run.results["sma_crossover"])
+        }
+        models = [
+            m for m in get_registry().list() if m["symbol"] == symbol and m["interval"] == interval
+        ]
+        for m in models:
+            kind, model_id = m["model_type"], m["model_id"]
+            label = {"xgboost": "XGBoost", "lstm": "LSTM"}.get(kind, kind)
+            if kind in run.results:
+                variants[f"{kind}_all_in"] = (f"{label} (all-in)", run.results[kind])
+            for key, name, params, title in (
+                (
+                    f"{kind}_sized",
+                    kind,
+                    {"model_id": model_id, "sizing": "probability"},
+                    "bet sizing",
+                ),
+                (f"sma_{kind}_filter", "sma_ml_filter", {**sma, "model_id": model_id}, "filter"),
+            ):
+                sig = get_strategy(name, params).generate_signals(run.data)
+                res = run_backtest(run.data, sig, *run.window, run.config, ppy, key)
+                text = f"{label} ({title})" if title == "bet sizing" else f"SMA + {label} {title}"
+                variants[key] = (text, res)
+        for key, (label, res) in variants.items():
+            m = compute_metrics(res, rf_annual)
+            rows.append(
+                {
+                    "market": f"{symbol} {interval}",
+                    "variant": key,
+                    "label": label,
+                    "total_return": m["total_return"],
+                    "sharpe": m["sharpe"],
+                    # Idle cash earns nothing in the engine, so with rf > 0 any strategy that
+                    # holds smaller positions is penalised; the rf = 0 Sharpe is scale-free.
+                    "sharpe_rf0": finite(sharpe_ratio(res.returns, ppy, 0.0)),
+                    "max_drawdown": m["max_drawdown"],
+                    "exposure": m["exposure"],
+                    "trades": m["trades"],
+                    "total_costs": m["total_costs"],
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def e6_accuracy_vs_profit(runs: list[MarketRun]) -> pd.DataFrame:
     rows = []
     for run in runs:
@@ -275,7 +330,7 @@ def e3_label_ablation(
     return pd.DataFrame(rows)
 
 
-def e4_lookahead_demo(
+def e4_lookahead_bias(
     symbol: str = "SPY", source: str = "yfinance", interval: str = "1d"
 ) -> pd.DataFrame:
     """How much do common leaks inflate a backtest? (educational)

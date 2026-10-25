@@ -35,6 +35,8 @@ interface Props {
   overlays?: Overlay[];
   rsi?: (number | null)[] | null;
   macd?: { macd: (number | null)[]; signal: (number | null)[]; hist: (number | null)[] } | null;
+  /** Fractionally differentiated log price (AFML Ch. 5), drawn in its own pane. */
+  ffd?: (number | null)[] | null;
   fills?: Fill[];
   intraday?: boolean;
   height?: number;
@@ -52,7 +54,7 @@ function line(ts: number[], values: (number | null)[]) {
   return out;
 }
 
-export function PriceChart({ timestamps, open, high, low, close, volume, overlays = [], rsi, macd, fills, intraday, height = 420, handle }: Props) {
+export function PriceChart({ timestamps, open, high, low, close, volume, overlays = [], rsi, macd, ffd, fills, intraday, height = 420, handle }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const { mode } = useTheme();
@@ -139,6 +141,12 @@ export function PriceChart({ timestamps, open, high, low, close, volume, overlay
       const sig = chart.addSeries(LineSeries, { color: c.sell, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: "Signal" }, pane);
       sig.setData(line(timestamps, macd.signal));
       chart.panes()[pane]?.setStretchFactor(110);
+      pane += 1;
+    }
+    if (ffd) {
+      const s = chart.addSeries(LineSeries, { color: c.sell, lineWidth: 2, priceLineVisible: false, title: "Frac-diff d=0.4" }, pane);
+      s.setData(line(timestamps, ffd));
+      chart.panes()[pane]?.setStretchFactor(100);
     }
 
     chart.panes()[0]?.setStretchFactor(height);
@@ -147,8 +155,8 @@ export function PriceChart({ timestamps, open, high, low, close, volume, overlay
       chart.remove();
       chartRef.current = null;
     };
-  }, [timestamps, open, high, low, close, volume, overlays, rsi, macd, fills, intraday, mode, height]);
+  }, [timestamps, open, high, low, close, volume, overlays, rsi, macd, ffd, fills, intraday, mode, height]);
 
-  const extra = (rsi ? 100 : 0) + (macd ? 110 : 0);
+  const extra = (rsi ? 100 : 0) + (macd ? 110 : 0) + (ffd ? 100 : 0);
   return <div ref={ref} style={{ height: height + extra }} className="w-full overflow-hidden rounded-lg" />;
 }

@@ -6,7 +6,7 @@ import json
 import zipfile
 from typing import Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import Response
 
 from tokenedge.api import db
@@ -36,6 +36,69 @@ def list_runs(
     offset: int = Query(0, ge=0),
 ) -> dict:
     return db.list_runs(symbol, kind, limit, offset)
+
+
+BUNDLE_FORMAT = "tokenedge.runs"
+MAX_IMPORT_BYTES = 64 * 1024 * 1024
+_REQUIRED = ("kind", "symbol", "source", "interval", "window", "strategies", "metrics", "data_hash")
+
+
+class InvalidBundleError(TokenEdgeError):
+    code = "INVALID_BUNDLE"
+    status = 422
+
+
+@router.get("/bundle")
+def export_bundle(
+    ids: str | None = Query(None, description="Comma-separated run IDs; all if empty"),
+):
+    """Every run (or the given ones) in one JSON file that /runs/import can read back (FR-R3)."""
+    wanted = [i for i in (ids or "").split(",") if i] or db.all_run_ids()
+    runs = [r for r in (db.get_run(i) for i in wanted) if r is not None]
+    body = {"format": BUNDLE_FORMAT, "version": 1, "exported_at": db.utc_now(), "runs": runs}
+    return Response(
+        json.dumps(body, separators=(",", ":")),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="tokenedge_runs.json"'},
+    )
+
+
+@router.post("/import")
+async def import_runs(request: Request) -> dict:
+    """Import a bundle from /runs/bundle, or a single run from /runs/{id}/export?format=json."""
+    if int(request.headers.get("content-length") or 0) > MAX_IMPORT_BYTES:
+        raise InvalidBundleError(f"The file is larger than {MAX_IMPORT_BYTES // 2**20} MB.")
+    raw = await request.body()
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise InvalidBundleError(f"The file is larger than {MAX_IMPORT_BYTES // 2**20} MB.")
+    try:
+        body = json.loads(raw)
+    except ValueError as exc:
+        raise InvalidBundleError("The file is not valid JSON.") from exc
+    if isinstance(body, dict) and body.get("format") == BUNDLE_FORMAT:
+        items = body.get("runs")
+    elif isinstance(body, dict) and "kind" in body:
+        items = [body]
+    else:
+        items = None
+    if not isinstance(items, list):
+        raise InvalidBundleError(
+            "Not a TokenEdge run export: expected a run bundle or a single run."
+        )
+
+    imported, skipped = [], 0
+    for n, run in enumerate(items, start=1):
+        missing = [k for k in _REQUIRED if not isinstance(run, dict) or k not in run]
+        if missing or run["kind"] not in ("backtest", "compare"):
+            raise InvalidBundleError(
+                f"Run {n} is incomplete or has an unknown kind.", {"missing": missing}
+            )
+        run_id = db.import_run(run)
+        if run_id is None:
+            skipped += 1
+        else:
+            imported.append(run_id)
+    return {"imported": len(imported), "skipped": skipped, "ids": imported}
 
 
 @router.get("/{run_id}")

@@ -1,0 +1,36 @@
+name: Experiments
+
+# Runs experiments E1-E7 (E3 and E4 train small XGBoost models) on the bundled snapshots and the
+# committed models, in the cloud rather than on a laptop. Download the "experiment-results"
+# artifact and copy its contents into docs/results/.
+on:
+  workflow_dispatch:
+    inputs:
+      bootstrap:
+        description: "Bootstrap resamples for the Sharpe-difference test"
+        required: false
+        default: "5000"
+
+jobs:
+  experiments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          pip install -r requirements.txt matplotlib
+          pip install -e . --no-deps
+      - name: Run E1-E7
+        env:
+          TOKENEDGE_OFFLINE: "1"
+        run: python scripts/run_experiments.py --with-training --bootstrap ${{ inputs.bootstrap }} --out results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: experiment-results
+          path: results/
+          retention-days: 30

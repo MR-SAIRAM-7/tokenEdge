@@ -205,7 +205,7 @@ export default function Project() {
         </div>
         <p className="mt-3 text-xs text-muted">
           Models are trained outside the app (Google Colab or a cloud CI runner) and exported as small files. The web app only runs inference, so the same feature code is used for training
-          and prediction and no GPU is needed for the demo.
+          and prediction and no GPU is needed to run the app.
         </p>
       </Section>
 

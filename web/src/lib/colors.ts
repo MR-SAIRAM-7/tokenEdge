@@ -13,13 +13,14 @@ const SLOT_BY_STRATEGY: Record<string, number> = {
   xgboost: 1,
   lstm: 2,
   buy_hold: 3,
+  sma_ml_filter: 4,
 };
 
 export function strategyColor(key: string, mode: Mode): string {
   const base = key.replace(/_\d+$/, "");
   const dup = key.match(/_(\d+)$/);
   let slot = SLOT_BY_STRATEGY[base] ?? 4;
-  if (dup && base in SLOT_BY_STRATEGY) slot = 4 + ((Number(dup[1]) - 2) % 2);
+  if (dup && base in SLOT_BY_STRATEGY) slot = 5;
   return SERIES[mode][slot % SERIES[mode].length];
 }
 

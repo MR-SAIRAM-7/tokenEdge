@@ -1,31 +1,34 @@
-from tokenedge import demo
+from tokenedge import study
 from tokenedge.api.routes import insights
 from tokenedge.config import Instrument
 
 
-def test_demo_seed_runs_real_comparisons(client, monkeypatch):
-    monkeypatch.setattr(demo, "DEMO_MARKETS", [("SYN", "yfinance", "1d")])
-    status = demo.seed_demo()
+def test_study_runs_real_comparisons(client, monkeypatch):
+    monkeypatch.setattr(study, "STUDY_MARKETS", [("SYN", "yfinance", "1d")])
+    status = study.run_study()
     assert status["state"] == "done"
     assert status["done"] == status["total"] > 0
-    # Scenarios for markets without data fail individually without stopping the seed.
+    # Scenarios for markets without data fail individually without stopping the study.
     assert all("SYN" not in e for e in status["errors"])
 
     runs = client.get("/api/runs", params={"symbol": "SYN", "kind": "compare", "limit": 50}).json()[
         "items"
     ]
-    seeded = [r for r in runs if r["name"] == "SYN: classical vs ML on held-out data"]
-    assert seeded and set(seeded[0]["model_ids"]) == {"xgb_syn_1d_fh_v1", "lstm_syn_1d_fh_v1"}
-    assert seeded[0]["in_sample"] is False
+    study_runs = [r for r in runs if r["name"] == "SYN: classical vs ML on held-out data"]
+    assert study_runs and set(study_runs[0]["model_ids"]) == {
+        "xgb_syn_1d_fh_v1",
+        "lstm_syn_1d_fh_v1",
+    }
+    assert study_runs[0]["in_sample"] is False
 
-    again = demo.seed_demo(replace=True)
+    again = study.run_study(replace=True)
     assert again["state"] == "done"
     runs = client.get("/api/runs", params={"symbol": "SYN", "kind": "compare", "limit": 50}).json()[
         "items"
     ]
     assert len([r for r in runs if r["name"] == "SYN: classical vs ML on held-out data"]) == 1
 
-    s = client.get("/api/demo/status").json()
+    s = client.get("/api/study/status").json()
     assert s["state"] == "done" and s["has_runs"] is True
 
 

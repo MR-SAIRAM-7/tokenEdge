@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useFindings, useHealth, useMarketsOverview, useModels, useRuns } from "../api/queries";
-import { DemoSeedCard } from "../components/DemoSeed";
+import { StudyCard } from "../components/StudyRunner";
 import { Sparkline } from "../components/Sparkline";
 import { Badge, Button, Card, CardHeader, EmptyState, Skeleton } from "../components/ui";
 import { dateTimeLocal, num, pct, price } from "../lib/format";
@@ -56,7 +56,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="accent">Major project</Badge>
               <Badge tone="neutral">Algorithmic trading research</Badge>
-              {health?.offline && <Badge tone="warn">Offline demo</Badge>}
+              {health?.offline && <Badge tone="warn">Offline mode</Badge>}
             </div>
             <h1 className="mt-4 text-3xl leading-tight font-semibold tracking-tight text-fg md:text-[2.4rem]">
               After costs, on unseen data, does machine learning beat a simple rule?
@@ -92,7 +92,7 @@ export default function Dashboard() {
 
       {!runsLoading && !hasRuns && (
         <Card className="border-accent/40">
-          <DemoSeedCard />
+          <StudyCard />
         </Card>
       )}
 

@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { Command, Compass, Menu, Moon, PanelLeftClose, PanelLeftOpen, Presentation, Sun, WifiOff, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
-import { useDemoStatus, useHealth } from "../api/queries";
+import { useHealth, useStudyStatus } from "../api/queries";
 import { useTheme } from "../state/theme";
 import { useUi } from "../state/ui";
 import { CommandPalette } from "./CommandPalette";
@@ -114,7 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const ui = useUi();
   const location = useLocation();
   const { data: health } = useHealth();
-  const { data: demo } = useDemoStatus();
+  const { data: study } = useStudyStatus();
   const [open, setOpen] = useState(false);
 
   return (
@@ -170,9 +170,9 @@ export function Layout({ children }: { children: ReactNode }) {
               </IconButton>
             </div>
           </div>
-          {demo?.state === "running" && (
-            <div className="relative h-0.5 overflow-hidden bg-panel-2" title="Loading demo data">
-              <div className="h-full bg-accent transition-all duration-500" style={{ width: `${demo.total ? (demo.done / demo.total) * 100 : 5}%` }} />
+          {study?.state === "running" && (
+            <div className="relative h-0.5 overflow-hidden bg-panel-2" title="Running the research study">
+              <div className="h-full bg-accent transition-all duration-500" style={{ width: `${study.total ? (study.done / study.total) * 100 : 5}%` }} />
             </div>
           )}
         </header>

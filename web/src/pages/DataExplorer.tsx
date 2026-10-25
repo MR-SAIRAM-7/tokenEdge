@@ -33,6 +33,7 @@ const INDICATORS = [
   { key: "bb:20", label: "Bollinger 20" },
   { key: "rsi:14", label: "RSI 14" },
   { key: "macd", label: "MACD" },
+  { key: "ffd:0.4", label: "Frac-diff d=0.4" },
 ];
 
 export default function DataExplorer() {
@@ -91,6 +92,7 @@ export default function DataExplorer() {
 
   const rsi = active.includes("rsi:14") ? series["rsi_14"] ?? null : null;
   const macd = active.includes("macd") && series["macd"] ? { macd: series["macd"], signal: series["macd_signal"], hist: series["macd_hist"] } : null;
+  const ffd = active.includes("ffd:0.4") ? series["ffd_0.4"] ?? null : null;
 
   const stats = useMemo(() => {
     if (!d || d.close.length < 2) return null;
@@ -216,6 +218,7 @@ export default function DataExplorer() {
               overlays={overlays}
               rsi={rsi}
               macd={macd}
+              ffd={ffd}
               intraday={intraday}
               height={440}
             />

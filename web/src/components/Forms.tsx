@@ -5,6 +5,12 @@ import { Checkbox, Field, Input, NumberInput, Segmented, Select } from "./ui";
 
 // ------------------------------------------------------------------ strategy params
 
+/** Models a strategy can use: its own model type, or any model for strategies such as the ML filter. */
+export const usableModels = (strategy: StrategyInfo | undefined, models: ModelSummary[]) =>
+  strategy?.kind === "ml" ? models.filter((m) => !strategy.model_type || m.model_type === strategy.model_type) : [];
+
+const optionLabel = (o: string) => (o.length <= 4 ? o.toUpperCase() : (o.charAt(0).toUpperCase() + o.slice(1)).replace("_", "-"));
+
 function propType(p: JsonSchemaProp): { type: string; enum?: string[] } {
   if (p.enum) return { type: "enum", enum: p.enum };
   if (p.type) return { type: p.type };
@@ -38,7 +44,7 @@ export function StrategyParamsForm({
         const { type, enum: options } = propType(p);
         const label = p.title ?? key;
         if (key === "model_id") {
-          const usable = models.filter((m) => m.model_type === strategy.model_type);
+          const usable = usableModels(strategy, models);
           return (
             <Field key={key} label={label} help={p.description} className="col-span-2">
               <Select value={(params[key] as string) ?? ""} onChange={(e) => onChange({ ...params, [key]: e.target.value })}>
@@ -47,7 +53,7 @@ export function StrategyParamsForm({
                 </option>
                 {usable.map((m) => (
                   <option key={m.model_id} value={m.model_id}>
-                    {m.model_id} ({m.symbol} {m.interval})
+                    {m.model_id} ({m.symbol} {m.interval}{strategy.model_type ? "" : `, ${m.model_type}`})
                   </option>
                 ))}
               </Select>
@@ -60,7 +66,7 @@ export function StrategyParamsForm({
               <Select value={(params[key] as string) ?? (p.default as string)} onChange={(e) => onChange({ ...params, [key]: e.target.value })}>
                 {options.map((o) => (
                   <option key={o} value={o}>
-                    {o.toUpperCase()}
+                    {optionLabel(o)}
                   </option>
                 ))}
               </Select>
@@ -102,7 +108,7 @@ export function defaultParams(strategy: StrategyInfo, models: ModelSummary[], sy
   const out: Record<string, unknown> = {};
   for (const [k, p] of Object.entries(strategy.params_schema.properties ?? {})) {
     if (k === "model_id") {
-      const usable = models.filter((m) => m.model_type === strategy.model_type);
+      const usable = usableModels(strategy, models);
       const match = usable.find((m) => m.symbol === symbol && m.interval === interval) ?? usable[0];
       if (match) out[k] = match.model_id;
     } else if (p.default !== undefined && p.default !== null) {

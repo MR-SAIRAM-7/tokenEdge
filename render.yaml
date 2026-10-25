@@ -11,5 +11,5 @@ services:
     envVars:
       - key: TOKENEDGE_OFFLINE
         value: "0"
-      - key: TOKENEDGE_DEMO_SEED
-        value: "1" # fill the run history with the demo scenarios on first start
+      - key: TOKENEDGE_RUN_STUDY
+        value: "1" # run the research study on first start to fill the run history

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./client";
 import type {
   CostPreset,
-  DemoStatus,
   Finding,
   Health,
   MarketOverview,
@@ -12,6 +11,7 @@ import type {
   RunSummary,
   Splits,
   StrategyInfo,
+  StudyStatus,
 } from "./types";
 
 export const useHealth = () =>
@@ -68,10 +68,10 @@ export const useFindings = () =>
     queryFn: () => api.get<{ items: Finding[] }>("/findings").then((r) => r.items),
   });
 
-export const useDemoStatus = (poll = false) =>
+export const useStudyStatus = (poll = false) =>
   useQuery({
-    queryKey: ["demo-status"],
-    queryFn: () => api.get<DemoStatus>("/demo/status"),
+    queryKey: ["study-status"],
+    queryFn: () => api.get<StudyStatus>("/study/status"),
     refetchInterval: (q) => (poll || q.state.data?.state === "running" ? 1500 : false),
   });
 
