@@ -65,27 +65,28 @@ export function RunHeader({ run }: { run: BacktestResponse | { symbol: string; i
 export function DiagnosticsCard({ report, title = "Classification on this window" }: { report: ClassificationReport; title?: string }) {
   const at = report.at_trading_threshold;
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr]">
+    // Wraps instead of squeezing: the card is also used in half-width columns (model detail).
+    <div className="flex flex-wrap items-start gap-6">
       <ConfusionMatrix report={report} />
-      <div className="space-y-2 text-sm">
+      <div className="min-w-[260px] flex-1 space-y-2 text-sm">
         <div className="font-medium text-fg">{title}</div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 tabular sm:grid-cols-3">
+        <div className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 tabular">
           <span className="text-muted">Accuracy</span>
-          <span className="text-fg sm:col-span-2">{pct(report.accuracy, 1)}</span>
+          <span className="text-fg">{pct(report.accuracy, 1)}</span>
           <span className="text-muted">ROC AUC</span>
-          <span className="text-fg sm:col-span-2">{num(report.roc_auc, 3)}</span>
+          <span className="text-fg">{num(report.roc_auc, 3)}</span>
           <span className="text-muted">Precision / recall</span>
-          <span className="text-fg sm:col-span-2">
+          <span className="text-fg">
             {pct(report.precision, 1)} / {pct(report.recall, 1)}
           </span>
           <span className="text-muted">Base rate (up)</span>
-          <span className="text-fg sm:col-span-2">{pct(report.base_rate, 1)}</span>
+          <span className="text-fg">{pct(report.base_rate, 1)}</span>
           <span className="text-muted">Samples</span>
-          <span className="text-fg sm:col-span-2">{report.n}</span>
+          <span className="text-fg">{report.n}</span>
           {at && (
             <>
-              <span className="text-muted">At trading threshold {num(at.threshold, 2)}</span>
-              <span className="text-fg sm:col-span-2">
+              <span className="text-muted">At threshold {num(at.threshold, 2)}</span>
+              <span className="text-fg">
                 precision {pct(at.precision, 1)}, in market {pct(at.predicted_positive_rate, 0)} of bars
               </span>
             </>

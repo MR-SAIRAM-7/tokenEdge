@@ -356,7 +356,7 @@ export default function Compare() {
               steps={["Loading market data", "Generating signals (models run through ONNX / XGBoost)", "Simulating trades with costs and slippage", "Bootstrapping the Sharpe differences", "Re-running at five cost levels"]}
             />
           ) : result ? (
-            <CompareResults run={result} />
+            <CompareResults key={result.run_id} run={result} />
           ) : (
             <Card>
               <EmptyState icon={<GitCompareArrows className="size-8" />} title="Run a comparison">

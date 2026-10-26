@@ -16,6 +16,10 @@ export function useStudy() {
 
   useEffect(() => {
     const state = status.data?.state;
+    if (prev.current === "running" && state === "error") {
+      qc.invalidateQueries({ queryKey: ["runs"] });
+      toast(`The study stopped: ${status.data?.errors.at(-1) ?? "unknown error"}`, "error");
+    }
     if (prev.current === "running" && state === "done") {
       ["runs", "findings", "models", "study-status"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       const errs = status.data?.errors.length ?? 0;
@@ -65,7 +69,7 @@ export function StudyCard({ compact = false }: { compact?: boolean }) {
         <div>
           <div className="text-base font-semibold text-fg">Run the research study</div>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted">
-            Runs the study's comparisons and backtests on the bundled market data (SPY, AAPL, RELIANCE, TCS, BTC) with every registered model, and saves them to Run History. Takes about a minute.
+            Runs the study's comparisons and backtests on the bundled market data (SPY, AAPL, RELIANCE, TCS, BTC, ETH) with every registered model, and saves them to Run History. Takes about a minute.
           </p>
         </div>
       )}

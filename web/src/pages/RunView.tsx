@@ -29,7 +29,7 @@ export default function RunView() {
             title={run.name ?? (run.kind === "compare" ? `Comparison · ${run.symbol}` : `${run.strategies[0]?.label} · ${run.symbol}`)}
             subtitle={`Saved ${dateTimeLocal(run.created_at)}${run.git_sha ? ` · code ${run.git_sha}` : ""} · run ${run.run_id?.slice(0, 8)}`}
           />
-          {run.kind === "compare" ? <CompareResults run={run} /> : <BacktestResults run={run} />}
+          {run.kind === "compare" ? <CompareResults key={run.run_id} run={run} /> : <BacktestResults key={run.run_id} run={run} />}
         </>
       )}
     </div>

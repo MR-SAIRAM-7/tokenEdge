@@ -331,7 +331,7 @@ export default function BacktestLab() {
               intervalMs={500}
             />
           ) : result ? (
-            <BacktestResults run={result} />
+            <BacktestResults key={result.run_id} run={result} />
           ) : (
             <Card>
               <EmptyState icon={<FlaskConical className="size-8" />} title="Pick a quick scenario or configure a strategy">

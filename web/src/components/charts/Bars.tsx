@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SharpeDiff } from "../../api/types";
 import { CHROME } from "../../lib/colors";
-import { num } from "../../lib/format";
+import { niceTicks, num } from "../../lib/format";
 import { useTheme } from "../../state/theme";
 
 export interface HBarItem {
@@ -54,16 +54,24 @@ export function BootstrapHistogram({ diff, color, height = 180 }: { diff: Sharpe
   const { mode } = useTheme();
   const c = CHROME[mode];
   const { edges, counts } = diff.histogram;
-  const width = edges.length > 1 ? edges[1] - edges[0] : 1;
   const data = counts.map((n, i) => ({ mid: (edges[i] + edges[i + 1]) / 2, n }));
-  const lo = Math.min(edges[0], 0) - width;
-  const hi = Math.max(edges[edges.length - 1], 0) + width;
+  // Explicit round ticks: Recharts' automatic ticks on an un-rounded domain can drop most labels.
+  const { ticks, digits } = niceTicks(Math.min(edges[0], 0), Math.max(edges[edges.length - 1], 0), 6);
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }} barCategoryGap={1}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="mid" type="number" domain={[lo, hi]} tickFormatter={(v: number) => num(v, 1)} stroke={c.axis} tickLine={false} />
+          <XAxis
+            dataKey="mid"
+            type="number"
+            domain={[ticks[0], ticks[ticks.length - 1]]}
+            ticks={ticks}
+            interval="preserveStartEnd"
+            tickFormatter={(v: number) => num(v, digits)}
+            stroke={c.axis}
+            tickLine={false}
+          />
           <YAxis hide />
           <ReferenceArea x1={diff.ci_low} x2={diff.ci_high} fill={color} fillOpacity={0.08} />
           <ReferenceLine x={0} stroke={c.text} strokeWidth={1} label={{ value: "0", position: "top", fill: c.muted, fontSize: 11 }} />

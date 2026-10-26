@@ -1,6 +1,8 @@
 import io
 import zipfile
 
+import pandas as pd
+
 SYN = {"symbol": "SYN", "source": "yfinance", "interval": "1d"}
 
 
@@ -135,6 +137,45 @@ def test_validation_errors_are_readable(client):
     assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
     r = client.post("/api/backtest", json={**SYN, "strategy": {"name": "magic"}})
     assert r.status_code == 422
+
+
+def test_bad_dates_are_validation_errors(client):
+    custom = {**SYN, "strategy": {"name": "buy_hold"}, "window": "custom", "save": False}
+    r = client.post("/api/backtest", json={**custom, "start": "not-a-date"})
+    assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert "not a valid date" in r.json()["error"]["message"]
+    r = client.get("/api/data/ohlcv", params={**SYN, "start": "31/31/2020"})
+    assert r.status_code == 422
+    r = client.post("/api/backtest", json={**custom, "start": "2021-06-01", "end": "2021-01-01"})
+    assert r.status_code == 422 and "is after the end date" in r.json()["error"]["message"]
+
+
+def test_custom_end_date_includes_the_whole_day():
+    from tokenedge.api.schemas import WindowIn
+    from tokenedge.api.services import resolve_window
+
+    hours = pd.date_range("2024-01-01", periods=24 * 10, freq="h", tz="UTC")
+    req = WindowIn(
+        symbol="X",
+        source="ccxt",
+        interval="1h",
+        window="custom",
+        start="2024-01-02",
+        end="2024-01-03",
+    )
+    start, end = resolve_window(req, [], hours)
+    assert start == pd.Timestamp("2024-01-02", tz="UTC")
+    assert pd.Timestamp("2024-01-03 23:00", tz="UTC") <= end < pd.Timestamp("2024-01-04", tz="UTC")
+
+
+def test_model_type_mismatch_message(client):
+    body = {**SYN, "strategy": {"name": "lstm", "params": {"model_id": "xgb_syn_1d_fh_v1"}}}
+    r = client.post("/api/backtest", json=body)
+    assert r.status_code == 422
+    assert (
+        "is an XGBoost model, but the LSTM strategy needs an LSTM model"
+        in (r.json()["error"]["message"])
+    )
 
 
 def test_run_history_crud_and_export(client):

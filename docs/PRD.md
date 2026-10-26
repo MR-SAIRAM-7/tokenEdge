@@ -652,7 +652,7 @@ Base path: `/api`. The OpenAPI/Swagger docs are generated automatically at `/doc
 | GET | `/api/runs/{run_id}/export?format=csv\|json` | Download run data. |
 | GET | `/api/runs/bundle?ids=` | Every run (or the given IDs) as one JSON bundle (FR-R3). |
 | POST | `/api/runs/import` | Import a bundle or a single exported run; runs that already exist are skipped. |
-| GET | `/api/findings` | Latest comparison per market, condensed for the findings scoreboard. |
+| GET | `/api/findings` | One comparison per market (the research study's, else the latest), condensed for the findings scoreboard. |
 | GET | `/api/markets/overview` | Last price, changes, volatility and a sparkline for each bundled market. |
 | GET | `/api/study/status` · POST `/api/study/run` | Status of, and trigger for, the research study (a fixed set of comparisons and backtests). |
 

@@ -399,6 +399,8 @@ export interface MarketOverview {
 export interface Finding {
   run_id: string;
   name: string | null;
+  /** True when this is the research study's comparison; false for the latest ad-hoc one. */
+  study: boolean;
   created_at: string;
   symbol: string;
   source: Source;

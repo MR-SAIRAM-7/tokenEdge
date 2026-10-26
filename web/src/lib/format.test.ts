@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strategyColor } from "./colors";
 import { downsampleIndices } from "./downsample";
-import { isIntraday, num, pct } from "./format";
+import { isIntraday, niceTicks, num, pct } from "./format";
 
 describe("format", () => {
   it("formats percentages and numbers", () => {
@@ -11,6 +11,19 @@ describe("format", () => {
     expect(num(Number.NaN)).toBe("—");
     expect(isIntraday("1h")).toBe(true);
     expect(isIntraday("1d")).toBe(false);
+  });
+
+  it("picks round axis ticks that cover the range", () => {
+    // The LSTM bootstrap interval that once lost most of its axis labels.
+    const { ticks, digits } = niceTicks(-1.62, 1.08);
+    expect(ticks).toEqual([-2, -1, 0, 1, 2]);
+    expect(digits).toBe(0);
+    const fine = niceTicks(-0.37, 0.12);
+    expect(fine.ticks[0]).toBeLessThanOrEqual(-0.37);
+    expect(fine.ticks[fine.ticks.length - 1]).toBeGreaterThanOrEqual(0.12);
+    expect(fine.ticks).toContain(0);
+    expect(fine.digits).toBe(1);
+    expect(niceTicks(1, 1).ticks).toEqual([1]);
   });
 });
 

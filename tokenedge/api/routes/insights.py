@@ -74,16 +74,29 @@ _FINDING_METRICS = (
 )
 
 
+def _finding_runs() -> list[dict]:
+    """One comparison per market: the research study's, else the latest comparison.
+
+    Preferring the study run keeps the scoreboard on the tuned baseline and the registered
+    models even after someone runs an ad-hoc comparison on the same market.
+    """
+    order = {(symbol, interval): i for i, (symbol, _, interval) in enumerate(study.STUDY_MARKETS)}
+    chosen: dict[tuple[str, str], dict] = {}
+    for summary in db.list_runs(kind="compare", limit=500)["items"]:  # newest first
+        key = (summary["symbol"], summary["interval"])
+        is_study = summary["name"] == study.comparison_name(summary["symbol"])
+        if key not in chosen or (is_study and not chosen[key]["study"]):
+            chosen[key] = {**summary, "study": is_study}
+    return sorted(
+        chosen.values(), key=lambda s: order.get((s["symbol"], s["interval"]), len(order))
+    )
+
+
 @router.get("/findings")
 def findings() -> dict:
-    """Latest comparison per market, condensed for the results scoreboard."""
-    seen: set[tuple[str, str]] = set()
+    """One comparison per market (see ``_finding_runs``), condensed for the results scoreboard."""
     out = []
-    for summary in db.list_runs(kind="compare", limit=500)["items"]:
-        key = (summary["symbol"], summary["interval"])
-        if key in seen:
-            continue
-        seen.add(key)
+    for summary in _finding_runs():
         run = db.get_run(summary["id"])
         if run is None:
             continue
@@ -91,6 +104,7 @@ def findings() -> dict:
             {
                 "run_id": run["run_id"],
                 "name": run.get("name"),
+                "study": summary["study"],
                 "created_at": run["created_at"],
                 "symbol": run["symbol"],
                 "source": run["source"],

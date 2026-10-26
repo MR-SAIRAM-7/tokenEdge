@@ -14,7 +14,7 @@ from tokenedge.config import HISTORY_START, Settings, asset_class_of, get_settin
 from tokenedge.data.cache import cache_file, merge_bars, read_parquet, snapshot_file, write_parquet
 from tokenedge.data.ccxt_source import CCXTSource
 from tokenedge.data.yfinance_source import YFinanceSource
-from tokenedge.errors import DataUnavailableError
+from tokenedge.errors import ConfigError, DataUnavailableError
 
 log = logging.getLogger(__name__)
 
@@ -102,17 +102,26 @@ def slice_window(
     if start is not None:
         out = out[out.index >= to_utc(start)]
     if end is not None:
-        end_ts = to_utc(end)
-        # A bare date as `end` includes every bar on that day.
-        if isinstance(end, str) and len(end) <= 10:
-            end_ts = end_ts + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
-        out = out[out.index <= end_ts]
+        out = out[out.index <= to_utc_end(end)]
     return out
 
 
 def to_utc(value: str | pd.Timestamp) -> pd.Timestamp:
-    ts = pd.Timestamp(value)
+    try:
+        ts = pd.Timestamp(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"'{value}' is not a valid date; use YYYY-MM-DD.") from exc
+    if pd.isna(ts):
+        raise ConfigError(f"'{value}' is not a valid date; use YYYY-MM-DD.")
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
+def to_utc_end(value: str | pd.Timestamp) -> pd.Timestamp:
+    """Like ``to_utc``, but a bare date (YYYY-MM-DD) as an end bound covers that whole day."""
+    ts = to_utc(value)
+    if isinstance(value, str) and len(value) <= 10:
+        ts = ts + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+    return ts
 
 
 def available_snapshots(settings: Settings | None = None) -> list[str]:

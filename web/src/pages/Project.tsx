@@ -217,7 +217,7 @@ export default function Project() {
 
       <Section title="References">
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-fg-2">
-          <li>López de Prado, M. (2018). Advances in Financial Machine Learning. Wiley. Chapters 3, 7, 11, 12, 14.</li>
+          <li>López de Prado, M. (2018). Advances in Financial Machine Learning. Wiley. Chapters 3, 5, 7, 10, 11, 14.</li>
           <li>Bailey, D. H., & López de Prado, M. (2014). The Deflated Sharpe Ratio. Journal of Portfolio Management, 40(5).</li>
           <li>Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. KDD '16.</li>
           <li>Hochreiter, S., & Schmidhuber, J. (1997). Long Short-Term Memory. Neural Computation, 9(8).</li>

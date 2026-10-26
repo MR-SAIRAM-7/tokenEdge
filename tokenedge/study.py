@@ -55,6 +55,11 @@ STATUS = StudyStatus()
 _lock = threading.Lock()
 
 
+def comparison_name(symbol: str) -> str:
+    """Name of the study's main comparison for a market (the findings page prefers these)."""
+    return f"{symbol}: classical vs ML on held-out data"
+
+
 def _models_for(symbol: str, interval: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for m in get_registry().list():
@@ -93,7 +98,7 @@ def _scenarios() -> list[tuple[str, object]]:
                 interval=interval,
                 window="model_test" if models else "test",
                 strategies=specs,
-                name=f"{symbol}: classical vs ML on held-out data",
+                name=comparison_name(symbol),
             )
 
         items.append((f"Comparison · {symbol} {interval}", compare_request))
@@ -239,14 +244,26 @@ def _scenarios() -> list[tuple[str, object]]:
     return items
 
 
-def run_study(replace: bool = False) -> dict:
-    """Run every study scenario synchronously and store the results."""
-    from tokenedge.api import services
-
+def _begin() -> bool:
+    """Mark the study as running. False if it already is, so only one run happens at a time."""
     with _lock:
         if STATUS.state == "running":
-            return STATUS.as_dict()
-        STATUS.state, STATUS.done, STATUS.errors, STATUS.current = "running", 0, [], ""
+            return False
+        STATUS.state, STATUS.done, STATUS.total = "running", 0, 0
+        STATUS.errors, STATUS.current = [], ""
+        return True
+
+
+def run_study(replace: bool = False) -> dict:
+    """Run every study scenario synchronously and store the results."""
+    if _begin():
+        _run(replace)
+    return STATUS.as_dict()
+
+
+def _run(replace: bool) -> None:
+    from tokenedge.api import services
+
     try:
         scenarios = _scenarios()
         if replace:
@@ -272,12 +289,11 @@ def run_study(replace: bool = False) -> dict:
         STATUS.state = "error"
         STATUS.errors.append(str(exc))
     STATUS.current = ""
-    return STATUS.as_dict()
 
 
 def study_run_names() -> set[str]:
     """Names given to study runs; only these are replaced when the study is re-run."""
-    names = {f"{symbol}: classical vs ML on held-out data" for symbol, _, _ in STUDY_MARKETS}
+    names = {comparison_name(symbol) for symbol, _, _ in STUDY_MARKETS}
     names |= {
         "SPY golden cross (SMA 50/200)",
         "BTC/USDT hourly EMA 24/168",
@@ -293,9 +309,10 @@ def study_run_names() -> set[str]:
 
 
 def run_in_background(replace: bool = False) -> dict:
-    if STATUS.state != "running":
-        threading.Thread(target=run_study, kwargs={"replace": replace}, daemon=True).start()
-        STATUS.state = "running"
+    # Mark the study as running before the thread starts, so the status is never "running"
+    # without a thread behind it (and a second click cannot start a second run).
+    if _begin():
+        threading.Thread(target=_run, kwargs={"replace": replace}, daemon=True).start()
     return STATUS.as_dict()
 
 

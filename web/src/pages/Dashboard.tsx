@@ -40,6 +40,13 @@ export default function Dashboard() {
   const hasRuns = (runs?.total ?? 0) > 0;
   const xgb = models?.filter((m) => m.model_type === "xgboost").length ?? 0;
   const lstm = models?.filter((m) => m.model_type === "lstm").length ?? 0;
+  // One row per market, so both model types show up (a plain slice of the list is all LSTMs).
+  const modelMarkets = Object.values(
+    (models ?? []).reduce<Record<string, NonNullable<typeof models>>>((acc, m) => {
+      (acc[`${m.symbol} · ${m.interval}`] ??= []).push(m);
+      return acc;
+    }, {}),
+  ).map((list) => [...list].sort((a, b) => a.model_type.localeCompare(b.model_type)).reverse());
 
   const stats = [
     { icon: Database, label: "Markets bundled", value: overview ? String(overview.length) : "…", to: "/data" },
@@ -224,18 +231,28 @@ export default function Dashboard() {
           <CardHeader title="Models" actions={<Link className="text-xs font-medium text-accent hover:underline" to="/models">Details</Link>} />
           <div className="px-4 pb-4">
             {models?.length ? (
-              <ul className="space-y-2">
-                {models.slice(0, 6).map((m) => (
-                  <li key={m.model_id}>
-                    <Link to={`/models/${encodeURIComponent(m.model_id)}`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-panel-2">
-                      <span className="min-w-0">
-                        <span className="block truncate font-mono text-xs text-fg">{m.model_id}</span>
-                        <span className="text-[11px] text-muted">
-                          held-out from {m.splits?.test?.[0]} · val AUC {num(m.val_metrics.roc_auc, 3)}
-                        </span>
+              <ul className="divide-y divide-line/60">
+                {modelMarkets.slice(0, 8).map((list) => (
+                  <li key={`${list[0].symbol}${list[0].interval}`} className="flex items-center justify-between gap-3 py-2">
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-fg">
+                        {list[0].symbol} <span className="text-[11px] font-normal text-muted">{list[0].interval}</span>
                       </span>
-                      <Badge tone="accent">{m.model_type === "xgboost" ? "XGBoost" : "LSTM"}</Badge>
-                    </Link>
+                      <span className="text-[11px] text-muted">held-out from {list[0].splits?.test?.[0]}</span>
+                    </span>
+                    <span className="flex shrink-0 gap-1.5">
+                      {list.map((m) => (
+                        <Link
+                          key={m.model_id}
+                          to={`/models/${encodeURIComponent(m.model_id)}`}
+                          title={`${m.model_id}: validation AUC ${num(m.val_metrics.roc_auc, 3)}`}
+                          className="rounded-lg border border-line px-2 py-1 text-[11px] text-fg-2 hover:border-accent/60 hover:text-fg"
+                        >
+                          <span className="font-medium">{m.model_type === "xgboost" ? "XGBoost" : "LSTM"}</span>{" "}
+                          <span className="tabular text-muted">AUC {num(m.val_metrics.roc_auc, 2)}</span>
+                        </Link>
+                      ))}
+                    </span>
                   </li>
                 ))}
               </ul>

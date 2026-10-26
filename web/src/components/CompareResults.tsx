@@ -207,7 +207,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
         <Card id="costs" className="scroll-mt-28">
           <CardHeader
             title="Cost sensitivity"
-            subtitle="Each strategy re-run with a flat commission of N bps per side and no slippage. Break-even = cost at which total return reaches zero."
+            subtitle="Sharpe ratio of each strategy re-run with a flat commission of N bps per side and no slippage. Break-even = cost at which total return reaches zero."
           />
           <div className="grid grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(0,1fr)_280px]">
             <XYChart
@@ -287,7 +287,7 @@ export function CompareResults({ run }: { run: CompareResponse }) {
             actions={<Segmented size="sm" value={tradeKey} onChange={setTradeKey} options={keys.map((k) => ({ value: k, label: labels[k] }))} />}
           />
           <div className="px-4 pb-4">
-            <TradesTable trades={run.trades[tradeKey] ?? []} filename={`trades_${run.symbol}_${tradeKey}.csv`} intraday={intraday} />
+            <TradesTable key={tradeKey} trades={run.trades[tradeKey] ?? []} filename={`trades_${run.symbol}_${tradeKey}.csv`} intraday={intraday} />
           </div>
         </Card>
       </div>

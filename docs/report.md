@@ -184,7 +184,7 @@ The same `tokenedge` Python package is used by the training notebooks and by the
 | Page | Purpose |
 |---|---|
 | Dashboard | Research question, headline numbers, latest comparison, recent runs |
-| Findings | Latest comparison per market as a scoreboard, with takeaways and CSV export |
+| Findings | The research study's comparison per market as a scoreboard (an ad-hoc comparison never replaces it), with takeaways and CSV export |
 | Data Explorer | Candlestick chart with overlays, RSI/MACD/fractional-differentiation panes, data-quality report |
 | Backtest Lab | One strategy with schema-generated parameters, window and cost settings; equity, drawdown, trades on price, monthly returns, trade log, ML diagnostics |
 | Compare | Several strategies on one window: verdict, overlaid curves, metrics, PSR/DSR, bootstrap distribution, cost sensitivity |
@@ -210,11 +210,11 @@ Each run stores its full request, the data hash, model IDs and the git commit. R
 | Unit | 57 | RSI against a reference loop; triple-barrier labels on hand-built paths; commission, slippage and cash-interest arithmetic; Sharpe, drawdown, PSR/DSR; the bootstrap on a nearly flat strategy; purged K-fold; fractional-differentiation weights and limits; bet sizing; the ML filter |
 | Property-based (Hypothesis) | 2 | equity = cash + position × price at every bar; zero-cost Buy & Hold equals the price return; higher costs never raise final equity |
 | Leakage | 19 | future perturbation for feature sets v1/v2 and every strategy (including sized and filtered ML); every fill strictly after its signal; the window guard refuses in-sample backtests |
-| Integration (API) | 15 | every endpoint with synthetic data; 409 on in-sample windows; run persistence, export and bundle import; reproducibility; the research study |
+| Integration (API) | 19 | every endpoint with synthetic data; 409 on in-sample windows; readable 422 errors for bad dates and mismatched models; run persistence, export and bundle import; reproducibility; the research study and the findings it feeds |
 | Cross-check | 3 | SMA(20/50) in TokenEdge and Backtrader at three cost levels (0, 10 bps, 10 bps + 5 bps slippage): same entries, total return within 0.5 percentage points (0.2 pp observed) |
-| Frontend (Vitest) | 4 | formatting, palette, downsampling, share-link encoding |
+| Frontend (Vitest) | 5 | formatting, axis ticks, palette, downsampling, share-link encoding |
 
-All 96 Python tests and 4 frontend tests pass in CI on every push. Line coverage is 91% overall and above 85% on the engine, metrics, labeling and validation modules.
+All 100 Python tests and 5 frontend tests pass in CI on every push. Line coverage is 91% overall and above 85% on the engine, metrics, labeling and validation modules.
 
 ---
 

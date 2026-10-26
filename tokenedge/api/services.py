@@ -27,7 +27,7 @@ from tokenedge.config import (
     periods_per_year,
 )
 from tokenedge.data.cache import data_hash
-from tokenedge.data.loader import get_ohlcv, slice_window, to_utc
+from tokenedge.data.loader import get_ohlcv, slice_window, to_utc, to_utc_end
 from tokenedge.engine.backtester import BacktestResult, run_backtest
 from tokenedge.engine.costs import ExecutionConfig
 from tokenedge.errors import ConfigError, InsufficientDataError
@@ -88,6 +88,18 @@ def load_history(market: MarketIn, end: str | None = None) -> pd.DataFrame:
     return df
 
 
+def load_window_history(req: WindowIn) -> pd.DataFrame:
+    """History for a request: everything, or up to the end date of a custom window."""
+    if req.window != "custom":
+        return load_history(req)
+    if req.start and req.end and to_utc(req.start) > to_utc_end(req.end):
+        raise ConfigError(
+            f"The start date ({req.start}) is after the end date ({req.end}).",
+            {"start": req.start, "end": req.end},
+        )
+    return load_history(req, req.end)
+
+
 MODEL_TYPE_LABELS = {"xgboost": "XGBoost", "lstm": "LSTM"}
 
 
@@ -121,9 +133,11 @@ def prepare_strategies(
         if isinstance(strategy, MLStrategy):
             meta = registry.info(strategy.params.model_id).metadata  # type: ignore[attr-defined]
             if strategy.model_type and meta.get("model_type") != strategy.model_type:
+                have = MODEL_TYPE_LABELS.get(meta.get("model_type", ""), meta.get("model_type"))
+                need = MODEL_TYPE_LABELS.get(strategy.model_type, strategy.model_type)
                 raise ConfigError(
-                    f"Model '{meta.get('model_id')}' is a {meta.get('model_type')} model, "
-                    f"but strategy '{spec.name}' needs a {strategy.model_type} model."
+                    f"Model '{meta.get('model_id')}' is an {have} model, "
+                    f"but the {strategy.label} strategy needs an {need} model."
                 )
             cv = meta.get("cv") or {}
             trials = spec.trials or int(cv.get("trials") or 1)
@@ -153,13 +167,13 @@ def resolve_window(
     first, last = index[0], index[-1]
     if req.window == "custom":
         start = to_utc(req.start) if req.start else first
-        end = to_utc(req.end) if req.end else last
+        end = to_utc_end(req.end) if req.end else last
     elif req.window == "full":
         start, end = first, last
     elif req.window == "model_test":
         held = [held_out_start(p.model_meta) for p in prepared if p.model_meta]
         start = max(held) if held else to_utc(splits.test[0])
-        end = to_utc(req.end) if req.end else last
+        end = to_utc_end(req.end) if req.end else last
     else:
         window = getattr(splits, req.window)
         start = to_utc(window[0])
@@ -295,7 +309,7 @@ def _strategy_meta(p: Prepared) -> dict:
 def backtest(req: BacktestRequest) -> dict:
     warnings: list[str] = []
     cfg, preset = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
-    data = load_history(req, req.end if req.window == "custom" else None)
+    data = load_window_history(req)
     prepared = prepare_strategies([req.strategy], req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
     g = guard(prepared, start, req.allow_in_sample)
@@ -368,7 +382,7 @@ def backtest(req: BacktestRequest) -> dict:
 def compare(req: CompareRequest) -> dict:
     warnings: list[str] = []
     cfg, preset = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
-    data = load_history(req, req.end if req.window == "custom" else None)
+    data = load_window_history(req)
     prepared = prepare_strategies(req.strategies, req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
     g = guard(prepared, start, req.allow_in_sample)
@@ -452,7 +466,7 @@ def compare(req: CompareRequest) -> dict:
 def sensitivity(req: SensitivityRequest) -> dict:
     warnings: list[str] = []
     cfg, _ = req.execution.to_config(req.symbol, req.source, req.risk_free_rate)
-    data = load_history(req, req.end if req.window == "custom" else None)
+    data = load_window_history(req)
     prepared = prepare_strategies(req.strategies, req, warnings)
     start, end = resolve_window(req, prepared, pd.DatetimeIndex(data.index))
     g = guard(prepared, start, req.allow_in_sample)

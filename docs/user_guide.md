@@ -53,7 +53,7 @@ The market selector in the top bar (symbol and interval) applies to every page. 
 | Page | What to do there |
 |---|---|
 | **Dashboard** | Overview, latest comparison, recent runs. "Compare strategies" runs the default comparison for the selected market. |
-| **Findings** | The latest comparison for every market as one scoreboard. **Run study** (or **Re-run study**) runs the research study: a comparison per market plus a set of backtests, all saved to Run History. |
+| **Findings** | The research study's comparison for every market as one scoreboard (where the study has not run for a market, its latest comparison). Ad-hoc comparisons you run on the Compare page do not replace the study's results. **Run study** (or **Re-run study**) runs the research study: a comparison per market plus a set of backtests, all saved to Run History. |
 | **Data Explorer** | Candlestick chart with SMA/EMA/Bollinger overlays, RSI, MACD and fractionally differentiated price (d = 0.4) panes, a data-quality report and the data hash. **Refresh data** downloads bars newer than the cache. |
 | **Backtest Lab** | Run one strategy. Choose the window (Train / Validation / Test / Model test / Full / Custom), cost preset or custom commission and slippage, then **Run backtest**. For SMA, **Auto-tune** grid-searches the windows on train/validation data only and shows the validation-Sharpe heatmap. |
 | **Compare** | Buy & Hold vs SMA vs XGBoost vs LSTM (and optionally SMA + ML filter) on the same window and costs. Shows the verdict, equity and drawdown curves, metrics table, PSR/DSR, bootstrap test of the Sharpe difference and cost sensitivity. |

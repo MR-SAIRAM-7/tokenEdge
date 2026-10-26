@@ -201,7 +201,7 @@ export default function Findings() {
         if (f.sharpe_diff[m]?.significant && (f.sharpe_diff[m]?.estimate ?? 0) > 0) mlSig += 1;
       }
     }
-    return { markets: list.length, top, mlCmp, mlBeat, mlSig };
+    return { markets: list.length, top, mlCmp, mlBeat, mlSig, adHoc: list.filter((f) => !f.study).length };
   }, [items]);
 
   const exportCsv = () => {
@@ -233,7 +233,7 @@ export default function Findings() {
         icon={<Trophy className="size-5" />}
         eyebrow="Results"
         title="Research findings"
-        subtitle="The latest comparison for every market, on each model's held-out window with realistic costs. This page answers the project's research question."
+        subtitle="The research study's comparison for every market, on each model's held-out window with realistic costs. This page answers the project's research question."
         actions={
           items?.length ? (
             <>
@@ -263,7 +263,7 @@ export default function Findings() {
       {items && items.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatTile label="Markets evaluated" value={stats.markets} sub="latest comparison per market" />
+            <StatTile label="Markets evaluated" value={stats.markets} sub={stats.adHoc ? `${stats.adHoc} from an ad-hoc comparison` : "research study comparisons"} />
             <StatTile label="Most frequent winner" value={stats.top ? STRATEGY_NAMES[stats.top[0]] ?? stats.top[0] : "—"} sub={stats.top ? `best Sharpe in ${stats.top[1]} of ${stats.markets}` : undefined} />
             <StatTile label="ML beat SMA (Sharpe)" value={stats.mlCmp ? `${stats.mlBeat} / ${stats.mlCmp}` : "—"} sub="model-vs-baseline comparisons" />
             <StatTile label="Significant ML edges" value={stats.mlCmp ? stats.mlSig : "—"} sub="95% bootstrap interval above 0" />

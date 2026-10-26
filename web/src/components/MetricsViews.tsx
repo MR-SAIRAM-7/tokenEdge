@@ -98,13 +98,18 @@ export function TradesTable({ trades, filename, intraday }: { trades: Trade[]; f
     return out;
   }, [trades, sort]);
   const pages = Math.max(1, Math.ceil(sorted.length / per));
-  const rows = sorted.slice(page * per, page * per + per);
+  // Clamp: switching to a strategy with fewer trades must not leave the table on an empty page.
+  const current = Math.min(page, pages - 1);
+  const rows = sorted.slice(current * per, current * per + per);
 
   const head = (key: SortKey, label: string, right = true) => (
     <th className={clsx("px-2 py-2 font-medium", right && "text-right")}>
       <button
         className="inline-flex items-center gap-0.5 hover:text-fg"
-        onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : -1 }))}
+        onClick={() => {
+          setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : -1 }));
+          setPage(0);
+        }}
       >
         {label}
         {sort.key === key && (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
@@ -159,13 +164,13 @@ export function TradesTable({ trades, filename, intraday }: { trades: Trade[]; f
       </div>
       {pages > 1 && (
         <div className="mt-2 flex items-center justify-end gap-2 text-xs text-muted">
-          <Button size="sm" variant="ghost" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+          <Button size="sm" variant="ghost" disabled={current === 0} onClick={() => setPage(current - 1)}>
             Prev
           </Button>
           <span className="tabular">
-            {page + 1} / {pages}
+            {current + 1} / {pages}
           </span>
-          <Button size="sm" variant="ghost" disabled={page >= pages - 1} onClick={() => setPage((p) => p + 1)}>
+          <Button size="sm" variant="ghost" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
             Next
           </Button>
         </div>

@@ -1,3 +1,6 @@
+import threading
+import time
+
 from tokenedge import study
 from tokenedge.api.routes import insights
 from tokenedge.config import Instrument
@@ -32,7 +35,7 @@ def test_study_runs_real_comparisons(client, monkeypatch):
     assert s["state"] == "done" and s["has_runs"] is True
 
 
-def test_findings_uses_latest_comparison_per_market(client):
+def test_findings_prefer_the_study_comparison(client):
     body = {
         "symbol": "SYN",
         "strategies": [
@@ -41,16 +44,51 @@ def test_findings_uses_latest_comparison_per_market(client):
         ],
         "statistics": {"bootstrap_samples": 200},
         "cost_levels": [],
-        "name": "latest",
     }
-    client.post("/api/compare", json=body)
-    items = client.get("/api/findings").json()["items"]
-    syn = [f for f in items if f["symbol"] == "SYN"]
-    assert len(syn) == 1 and syn[0]["name"] == "latest"
+
+    def syn_findings():
+        items = client.get("/api/findings").json()["items"]
+        return [f for f in items if f["symbol"] == "SYN"]
+
+    client.post("/api/compare", json={**body, "name": study.comparison_name("SYN")})
+    client.post("/api/compare", json={**body, "name": "ad hoc"})
+    # A newer ad-hoc comparison does not replace the study's result on the scoreboard...
+    syn = syn_findings()
+    assert len(syn) == 1 and syn[0]["name"] == study.comparison_name("SYN") and syn[0]["study"]
     f = syn[0]
     assert set(f["metrics"]) == {"buy_hold", "sma_crossover"}
     assert {"sharpe", "max_drawdown", "psr"} <= set(f["metrics"]["sma_crossover"])
     assert f["ranking"] and f["verdict"]
+
+    # ...and the latest comparison is used once no study comparison exists.
+    for run in client.get("/api/runs", params={"symbol": "SYN", "limit": 500}).json()["items"]:
+        if run["name"] == study.comparison_name("SYN"):
+            client.delete(f"/api/runs/{run['id']}")
+    syn = syn_findings()
+    assert len(syn) == 1 and syn[0]["name"] == "ad hoc" and syn[0]["study"] is False
+
+
+def test_background_study_is_marked_running_before_it_starts(monkeypatch):
+    started, release = threading.Event(), threading.Event()
+    calls = []
+
+    def fake_run(replace):
+        calls.append(replace)
+        started.set()
+        release.wait(5)
+        study.STATUS.state = "done"
+
+    monkeypatch.setattr(study, "_run", fake_run)
+    monkeypatch.setattr(study, "STATUS", study.StudyStatus())
+    assert study.run_in_background()["state"] == "running"
+    assert study.run_in_background()["state"] == "running"  # a second click starts nothing
+    assert started.wait(5)
+    release.set()
+    for _ in range(100):
+        if study.STATUS.state == "done":
+            break
+        time.sleep(0.02)
+    assert calls == [False] and study.STATUS.state == "done"
 
 
 def test_markets_overview(client, monkeypatch):

@@ -90,10 +90,10 @@ function BarrierDiagram() {
       <line x1="20" x2="280" y1="112" y2="112" stroke="var(--neg)" strokeWidth="2" />
       <line x1="280" x2="280" y1="30" y2="120" stroke="var(--muted)" strokeWidth="2" />
       <text x="284" y="42" fontSize="10" fill="var(--fg-2)">
-        +k·σ
+        +1.5σ
       </text>
       <text x="284" y="116" fontSize="10" fill="var(--fg-2)">
-        −k·σ
+        −1.0σ
       </text>
       <text x="252" y="128" fontSize="10" fill="var(--fg-2)">
         t + h
@@ -119,7 +119,7 @@ export default function Methodology() {
         icon={<BookOpen className="size-5" />}
         eyebrow="Learn"
         title="Methodology"
-        subtitle="How TokenEdge keeps the comparison honest. The design follows López de Prado, Advances in Financial Machine Learning (2018), chapters 3, 7, 11, 12 and 14."
+        subtitle="How TokenEdge keeps the comparison honest. The design follows López de Prado, Advances in Financial Machine Learning (2018), chapters 3, 5, 7, 10, 11 and 14."
       />
 
       <div data-tour="methodology" className="space-y-4">
@@ -192,8 +192,8 @@ export default function Methodology() {
               <b>Fixed horizon:</b> label 1 if the close <i>h</i> bars ahead is higher than today's close by more than a threshold τ.
             </p>
             <p>
-              <b>Triple barrier:</b> place a profit-taking barrier at +k·σ, a stop-loss at −k·σ (σ = recent volatility, known at <i>t</i>) and a time limit <i>h</i> bars
-              ahead. The label records which is touched first. Labels adapt to volatility and match how a trade would actually exit.
+              <b>Triple barrier:</b> place a profit-taking barrier at +1.5σ, a stop-loss at −1.0σ (σ = recent volatility, known at <i>t</i>) and a time limit <i>h</i> bars
+              ahead (5 days or 24 hours). The label is 1 if the upper barrier is touched first. Labels adapt to volatility and match how a trade would actually exit.
             </p>
           </div>
           <BarrierDiagram />

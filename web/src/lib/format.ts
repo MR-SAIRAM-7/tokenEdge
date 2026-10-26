@@ -66,3 +66,16 @@ export function signClass(x: number | null | undefined): string {
   if (x === null || x === undefined || !Number.isFinite(x) || x === 0) return "text-fg";
   return x > 0 ? "text-pos" : "text-neg";
 }
+
+/** Round tick values (1, 2 or 5 times a power of ten apart) spanning [lo, hi], about `count` of them. */
+export function niceTicks(lo: number, hi: number, count = 5): { ticks: number[]; digits: number } {
+  const raw = (hi - lo) / Math.max(1, count - 1);
+  if (!(raw > 0) || !Number.isFinite(raw)) return { ticks: [lo], digits: 1 };
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw * 0.999) ?? 10 * pow;
+  const ticks: number[] = [];
+  for (let v = Math.floor(lo / step) * step; v < hi + step; v += step) {
+    ticks.push(Number(v.toFixed(10)) || 0); // `|| 0` turns -0 into 0
+  }
+  return { ticks, digits: Math.max(0, -Math.floor(Math.log10(step))) };
+}
